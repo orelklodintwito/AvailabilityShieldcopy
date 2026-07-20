@@ -5,18 +5,42 @@ export default function StatCard({
   label,
   value,
   hint,
-  tone = "blue"
+  tone = "blue",
+  trend = "",
+  trendDirection = "up"
 }) {
   return (
-    <article className={`stat-card ${tone}`}>
-      <div className="stat-heading">
-        <span>{label}</span>
-        <Icon size={18} />
+    <article className={`stat-card stat-card-${tone}`}>
+      <div className="stat-card-header">
+        <span className="stat-label">
+          {label}
+        </span>
+
+        <span className="stat-icon">
+          <Icon
+            size={18}
+            strokeWidth={1.9}
+          />
+        </span>
       </div>
 
-      <strong>{value}</strong>
+      <div className="stat-value">
+        {value}
+      </div>
 
-      <small>{hint}</small>
+      <div className="stat-footer">
+        {trend ? (
+          <span
+            className={`stat-trend stat-trend-${trendDirection}`}
+          >
+            {trend}
+          </span>
+        ) : null}
+
+        <span className="stat-hint">
+          {hint}
+        </span>
+      </div>
     </article>
   );
 }
