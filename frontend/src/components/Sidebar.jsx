@@ -3,7 +3,7 @@ import React from "react";
 import {
   Activity,
   Bell,
-  FileBarChart3,
+  FileText,
   Gauge,
   HeartPulse,
   ListChecks,
@@ -39,7 +39,7 @@ const navigationItems = [
   },
   {
     label: "Reports",
-    icon: FileBarChart3
+    icon: FileText
   },
   {
     label: "Settings",

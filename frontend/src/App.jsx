@@ -24,6 +24,11 @@ import {
 import Sidebar from "./components/Sidebar.jsx";
 import StatCard from "./components/StatCard.jsx";
 import TrafficChart from "./components/TrafficChart.jsx";
+import AttackSimulator from "./components/AttackSimulator.jsx";
+import ExportReport from "./components/ExportReport.jsx";
+import SystemHealth from "./components/SystemHealth.jsx";
+import TopAttackers from "./components/TopAttackers.jsx";
+import TrafficByLayer from "./components/TrafficByLayer.jsx";
 
 import { shieldApi } from "./services/api.js";
 
@@ -672,29 +677,299 @@ export default function App() {
     </section>
   );
 
-  const renderDashboard = () => (
-    <>
-      {renderStats()}
+  const renderDashboard = () => {
+    const totalRequests = Math.max(
+      metrics.totalRequests || 0,
+      1
+    );
 
-      <section className="dashboard-grid">
-        <TrafficChart
-          snapshots={data.snapshots}
-        />
+    const decisionItems = [
+      ["allow", "Allowed"],
+      ["limit", "Limited"],
+      ["delay", "Delayed"],
+      ["queue", "Queued"],
+      ["drop", "Dropped"],
+      ["alert", "Alerts"]
+    ];
 
-        {renderDecisionDistribution()}
+    return (
+      <>
+        {renderStats()}
 
-        {renderAlertsTable(8)}
+        <section className="overview-dashboard">
+          <div className="overview-traffic">
+            <TrafficChart snapshots={data.snapshots} />
+          </div>
 
-        {renderQueuePanel()}
+          <section className="panel overview-decisions">
+            <div className="panel-title">
+              <div>
+                <h2>Decision Distribution</h2>
+                <p>Actions selected by the rule engine</p>
+              </div>
+            </div>
 
-        {renderTopEndpoints()}
+            <div className="decision-overview-body">
+              <div
+                className="decision-donut"
+                style={{
+                  background: `conic-gradient(
+                    #38d17d 0 ${((decisions.allow || 0) / totalRequests) * 100}%,
+                    #f5c84b 0 ${(((decisions.allow || 0) + (decisions.limit || 0)) / totalRequests) * 100}%,
+                    #ff9a3d 0 ${(((decisions.allow || 0) + (decisions.limit || 0) + (decisions.delay || 0)) / totalRequests) * 100}%,
+                    #9d71ff 0 ${(((decisions.allow || 0) + (decisions.limit || 0) + (decisions.delay || 0) + (decisions.queue || 0)) / totalRequests) * 100}%,
+                    #ff5068 0 ${(((decisions.allow || 0) + (decisions.limit || 0) + (decisions.delay || 0) + (decisions.queue || 0) + (decisions.drop || 0)) / totalRequests) * 100}%,
+                    #43a5ff 0 100%
+                  )`
+                }}
+              >
+                <div>
+                  <strong>{number.format(metrics.totalRequests || 0)}</strong>
+                  <span>Total</span>
+                </div>
+              </div>
 
-        {renderPolicyTable()}
+              <div className="decision-overview-list">
+                {decisionItems.map(([key, label]) => {
+                  const value = decisions[key] || 0;
+                  const percent =
+                    ((value / totalRequests) * 100).toFixed(1);
 
-        {renderRequestLogs()}
-      </section>
-    </>
-  );
+                  return (
+                    <div key={key}>
+                      <span className={`decision-dot ${key}`} />
+                      <strong>{label}</strong>
+                      <em>{percent}%</em>
+                      <small>{number.format(value)}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel overview-alerts">
+            <div className="panel-title">
+              <div>
+                <h2>Recent Security Alerts</h2>
+                <p>Latest threats and decisions</p>
+              </div>
+              <span>{data.events.length} events</span>
+            </div>
+
+            <div className="compact-alert-list">
+              {data.events.slice(0, 5).map((event) => (
+                <div key={event.id}>
+                  <time>{time(event.timestamp)}</time>
+                  <span className={severityClass(event.severity)}>
+                    {event.severity}
+                  </span>
+                  <strong>{event.ip || "—"}</strong>
+                  <code>{event.endpoint || "—"}</code>
+                  <span className={decisionClass(event.decision)}>
+                    {event.decision}
+                  </span>
+                </div>
+              ))}
+
+              {!data.events.length && (
+                <div className="compact-empty">
+                  No security events yet.
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => setActiveSection("Alerts")}
+            >
+              View all alerts →
+            </button>
+          </section>
+
+          <section className="panel overview-queue">
+            <div className="panel-title">
+              <div>
+                <h2>Queue Status</h2>
+                <p>Heavy endpoint concurrency</p>
+              </div>
+            </div>
+
+            <div className="overview-queue-body">
+              <div className="queue-big-number">
+                <strong>{queue.queuedHeavy || 0}</strong>
+                <span>Waiting requests</span>
+              </div>
+
+              <div className="queue-mini-stack">
+                <div>
+                  <strong>{queue.activeHeavyForwarded || 0}</strong>
+                  <span>Active heavy</span>
+                </div>
+                <div>
+                  <strong>{queue.totalQueued || 0}</strong>
+                  <span>Total queued</span>
+                </div>
+                <div>
+                  <strong>{queue.totalQueueRejected || 0}</strong>
+                  <span>Rejected</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel overview-endpoints">
+            <div className="panel-title">
+              <div>
+                <h2>Top Endpoints</h2>
+                <p>Most requested protected routes</p>
+              </div>
+            </div>
+
+            <div className="endpoint-bars">
+              {topEndpoints.map(([endpoint, item]) => {
+                const maxValue = Math.max(
+                  ...topEndpoints.map(([, endpointItem]) =>
+                    endpointItem.requestCount || 0
+                  ),
+                  1
+                );
+
+                return (
+                  <div key={endpoint}>
+                    <div>
+                      <code>{endpoint}</code>
+                      <strong>{number.format(item.requestCount || 0)}</strong>
+                    </div>
+                    <span>
+                      <i
+                        style={{
+                          width: `${((item.requestCount || 0) / maxValue) * 100}%`
+                        }}
+                      />
+                    </span>
+                  </div>
+                );
+              })}
+
+              {!topEndpoints.length && (
+                <div className="compact-empty">
+                  Endpoint activity will appear here.
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => setActiveSection("Traffic Monitor")}
+            >
+              View all endpoints →
+            </button>
+          </section>
+
+          <div className="overview-layer">
+            <TrafficByLayer logs={data.logs} metrics={metrics} />
+          </div>
+
+          <section className="panel overview-logs">
+            <div className="panel-title">
+              <div>
+                <h2>Request Logs</h2>
+                <p>Latest traffic processed by AvailabilityShield</p>
+              </div>
+              <span>{data.logs.length} logs</span>
+            </div>
+
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>IP</th>
+                    <th>Method</th>
+                    <th>Endpoint</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Decision</th>
+                    <th>Severity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.logs.slice(0, 5).map((log) => (
+                    <tr key={log.id}>
+                      <td>{time(log.timestamp)}</td>
+                      <td>{log.ip || "—"}</td>
+                      <td>{log.method}</td>
+                      <td><code>{log.endpoint}</code></td>
+                      <td>{log.statusCode ?? "—"}</td>
+                      <td>{log.durationMs ?? 0} ms</td>
+                      <td>
+                        <span className={decisionClass(log.decision)}>
+                          {log.decision}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={severityClass(log.severity)}>
+                          {log.severity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {!data.logs.length && (
+                    <tr>
+                      <td colSpan="8" className="empty-cell">
+                        No request logs yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => setActiveSection("Traffic Monitor")}
+            >
+              View all logs →
+            </button>
+          </section>
+
+          <section className="panel overview-policies">
+            <div className="panel-title">
+              <div>
+                <h2>Active Policies</h2>
+                <p>Current protection rules</p>
+              </div>
+              <span>{endpointPolicies.length} rules</span>
+            </div>
+
+            <div className="active-policy-list">
+              {endpointPolicies.slice(0, 5).map(([endpoint, policy]) => (
+                <div key={endpoint}>
+                  <span className="policy-icon">▣</span>
+                  <strong>{endpoint}</strong>
+                  <small>{policy.type}</small>
+                  <em>Active</em>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="overview-link"
+              onClick={() => setActiveSection("Policies")}
+            >
+              View all policies →
+            </button>
+          </section>
+        </section>
+      </>
+    );
+  };
 
   const renderTrafficMonitor = () => (
     <>
@@ -839,8 +1114,40 @@ export default function App() {
         {renderTopEndpoints()}
 
         {renderRequestLogs()}
+
+        <ExportReport
+          data={{
+            health: data.health,
+            metrics,
+            events: data.events,
+            logs: data.logs,
+            policy: data.policy,
+            queue
+          }}
+        />
       </section>
     </>
+  );
+
+  const renderSystemHealth = () => (
+    <section className="dashboard-grid">
+      <SystemHealth
+        online={online}
+        health={data.health}
+        metrics={metrics}
+        lastUpdated={lastUpdated}
+      />
+
+      <TrafficByLayer
+        logs={data.logs}
+        metrics={metrics}
+      />
+
+      <TopAttackers
+        logs={data.logs}
+        events={data.events}
+      />
+    </section>
   );
 
   const renderSettings = () => (
@@ -918,6 +1225,9 @@ export default function App() {
 
       case "Settings":
         return renderSettings();
+
+      case "System Health":
+        return renderSystemHealth();
 
       case "Dashboard":
       default:
