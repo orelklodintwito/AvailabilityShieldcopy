@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "protectedPorts": [4000],
+  "localOnly": true,
+  "windowMs": 10000,
+  "warningSynPerWindow": 10,
+  "dropSynPerWindow": 20,
+  "maxDropsPerRun": 200,
+  "metricsWriteEveryPackets": 5
+}

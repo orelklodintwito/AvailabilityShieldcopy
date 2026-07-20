@@ -1,0 +1,48 @@
+{
+  "name": "availabilityshield",
+  "version": "1.0.0",
+  "description": "IPS-style DDoS mitigation system for Layer 4 and Layer 7 availability protection",
+  "main": "src/protected-app/server.js",
+  "scripts": {
+    "dev:app": "nodemon --ignore logs/** --ignore captures/** --ignore layer4/*.json src/protected-app/server.js",
+    "dev": "concurrently \"npm run dev:app\" \"npm run dev:gateway\"",
+    "dev:gateway": "nodemon --ignore logs/** --ignore captures/** --ignore layer4/*.json src/gateway/server.js",
+    "sim:normal": "node simulator/normal-load.js",
+    "sim:heavy": "node simulator/heavy-endpoint-abuse.js",
+    "sim:flood": "node simulator/http-flood.js",
+    "sim:critical": "node simulator/critical-mixed-load.js",
+    "sim:compare:heavy": "node simulator/compare-without-with-shield.js",
+    "sim:compare:flood": "SCENARIO=flood node simulator/compare-without-with-shield.js",
+    "sim:basic-preservation": "node simulator/basic-preservation.js",
+    "validate:backend": "node validation/backend-validation.js",
+    "sim:tcp-burst": "node simulator/tcp-connection-burst.js",
+    "run:app": "node src/protected-app/server.js",
+    "run:gateway": "node src/gateway/server.js",
+    "run": "concurrently \"npm run run:app\" \"npm run run:gateway\"",
+    "db:inspect": "node tools/db-inspect.js"
+  },
+  "dependencies": {
+    "axios": "^1.17.0",
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "http-proxy-middleware": "^3.0.6",
+    "morgan": "^1.11.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yotamgr314/AvailabilityShield.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yotamgr314/AvailabilityShield/issues"
+  },
+  "homepage": "https://github.com/yotamgr314/AvailabilityShield#readme"
+}

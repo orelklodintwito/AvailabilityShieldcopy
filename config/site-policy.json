@@ -1,0 +1,44 @@
+{
+  "protectedTarget": "http://localhost:3000",
+  "windowMs": 60000,
+  "thresholds": {
+    "warningRatio": 0.7,
+    "highRatio": 1.0,
+    "criticalRatio": 1.5,
+    "maxActiveRequestsBeforeQueue": 3,
+    "maxConcurrentHeavyForwarded": 3,
+    "maxGatewayQueueSize": 100,
+    "defaultDelayMs": 300,
+    "queueDelayMs": 0
+  },
+  "endpoints": {
+    "/health": {
+      "type": "basic",
+      "priority": "high",
+      "rateLimitPerMinute": 180
+    },
+    "/api/basic": {
+      "type": "basic",
+      "priority": "high",
+      "rateLimitPerMinute": 120
+    },
+    "/api/search": {
+      "type": "heavy",
+      "priority": "medium",
+      "rateLimitPerMinute": 40,
+      "delayMsWhenHigh": 300
+    },
+    "/api/report": {
+      "type": "heavy",
+      "priority": "low",
+      "rateLimitPerMinute": 20,
+      "delayMsWhenHigh": 700
+    },
+    "/api/export": {
+      "type": "heavy",
+      "priority": "low",
+      "rateLimitPerMinute": 10,
+      "delayMsWhenHigh": 1000
+    }
+  }
+}
