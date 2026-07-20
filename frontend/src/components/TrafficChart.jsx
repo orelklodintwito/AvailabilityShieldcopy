@@ -1,3 +1,5 @@
+import React from "react";
+
 function points(values, width, height, max) {
   if (!values.length) {
     return "";
