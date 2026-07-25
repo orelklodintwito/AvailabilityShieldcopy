@@ -27,6 +27,7 @@ import TrafficByLayer from "./components/TrafficByLayer.jsx";
 
 import { shieldApi } from "./services/api.js";
 import { useShieldDashboard } from "./hooks/useShieldDashboard.js";
+import { resolveSection } from "./app/routes.jsx";
 
 const number = new Intl.NumberFormat("en-US");
 
@@ -1088,7 +1089,7 @@ export default function App() {
             <strong>
               {import.meta.env
                 .VITE_GATEWAY_URL ||
-                "http://localhost:4000"}
+                "same-origin via the Vite gateway proxy"}
             </strong>
           </div>
 
@@ -1117,32 +1118,32 @@ export default function App() {
   );
 
   const renderSection = () => {
-    switch (activeSection) {
-      case "Alerts":
+    switch (resolveSection(activeSection)) {
+      case "alerts":
         return renderAlertsTable(20);
 
-      case "Traffic Monitor":
+      case "traffic":
         return renderTrafficMonitor();
 
-      case "Mitigation":
+      case "mitigation":
         return renderMitigation();
 
-      case "Policies":
+      case "policies":
         return renderPolicyTable();
 
-      case "Queue":
+      case "queue":
         return renderQueue();
 
-      case "Reports":
+      case "reports":
         return renderReports();
 
-      case "Settings":
+      case "settings":
         return renderSettings();
 
-      case "System Health":
+      case "health":
         return renderSystemHealth();
 
-      case "Dashboard":
+      case "dashboard":
       default:
         return renderDashboard();
     }
