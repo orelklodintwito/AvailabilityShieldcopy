@@ -1,28 +1,51 @@
-const BASE_URL =
-  import.meta.env.VITE_GATEWAY_URL || "http://localhost:4000";
+const BASE_URL = (import.meta.env.VITE_GATEWAY_URL || "").replace(/\/$/, "");
+const DEFAULT_TIMEOUT_MS = 8000;
 
 async function request(path, options = {}) {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers
-    },
-    ...options
-  });
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const body = await response.text();
+  try {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers
+      },
+      signal: options.signal || controller.signal
+    });
 
-    throw new Error(
-      body || `Request failed with status ${response.status}`
-    );
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const message =
+        body.error?.message ||
+        body.message ||
+        `Request failed with status ${response.status}`;
+
+      throw new Error(message);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("The gateway request timed out");
+    }
+
+    if (error instanceof TypeError) {
+      throw new Error("Could not connect to the AvailabilityShield gateway");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
 export const shieldApi = {
   health: () => request("/__shield/health"),
+
+  overview: () => request("/__shield/overview"),
 
   metrics: () => request("/__shield/metrics"),
 
@@ -38,6 +61,9 @@ export const shieldApi = {
 
   snapshots: (limit = 16) =>
     request(`/__shield/metric-snapshots?limit=${limit}`),
+
+  protectedAppLoad: () =>
+    request("/__shield/protected-app/load"),
 
   reset: () =>
     request("/__shield/reset", {
