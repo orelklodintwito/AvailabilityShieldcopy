@@ -17,12 +17,12 @@ function normalizeIp(ip) {
 }
 
 function getClientIp(req) {
-  const forwardedFor = req.headers["x-forwarded-for"];
-
-  if (forwardedFor) {
-    return normalizeIp(forwardedFor.split(",")[0].trim());
+  // The gateway is the trust boundary; do not accept client-supplied
+  // X-Forwarded-For unless an explicitly trusted proxy is configured.
+  if (process.env.TRUST_PROXY === "true" && req.socket.remoteAddress === "127.0.0.1") {
+    const forwardedFor = req.headers["x-forwarded-for"];
+    if (forwardedFor) return normalizeIp(forwardedFor.split(",")[0].trim());
   }
-
   return normalizeIp(req.socket.remoteAddress);
 }
 

@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Activity, FlaskConical, LoaderCircle, Play } from "lucide-react";
-
-const BASE_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:4000";
+import { shieldApi } from "../services/api.js";
 
 const scenarios = {
   normal: {
@@ -25,6 +24,27 @@ export default function AttackSimulator({ onComplete }) {
   const [scenario, setScenario] = useState("normal");
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState("");
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!running) return undefined;
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await shieldApi.simulationStatus();
+        const simulation = response.simulation || {};
+        setProgress(simulation.progress || 0);
+        if (["completed", "cancelled", "failed"].includes(simulation.status)) {
+          setRunning(false);
+          setResult(`${simulation.status}: ${simulation.completed || 0}/${simulation.total || 0} requests`);
+          onComplete?.();
+        }
+      } catch (error) {
+        setRunning(false);
+        setResult(error.message);
+      }
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [running, onComplete]);
 
   const runScenario = async () => {
     if (running) return;
@@ -32,22 +52,17 @@ export default function AttackSimulator({ onComplete }) {
     setRunning(true);
     setResult("");
 
-    const selected = scenarios[scenario];
-    const jobs = Array.from({ length: selected.requests }, (_, index) => {
-      const path = selected.paths[index % selected.paths.length];
-      return fetch(`${BASE_URL}${path}`, { method: "GET" })
-        .then((response) => response.status)
-        .catch(() => 0);
-    });
-
-    const statuses = await Promise.all(jobs);
-    const succeeded = statuses.filter((status) => status >= 200 && status < 500).length;
-
-    setResult(`${selected.label}: ${succeeded}/${selected.requests} requests reached the local gateway.`);
-    setRunning(false);
-
-    if (onComplete) {
-      window.setTimeout(onComplete, 450);
+    setProgress(0);
+    try {
+      await shieldApi.startSimulation({
+        scenario: scenario === "httpFloodDemo" ? "http-flood" : scenario === "heavyAbuseDemo" ? "heavy" : "normal",
+        requests: scenarios[scenario].requests,
+        concurrency: 4,
+        mode: "with-shield"
+      });
+    } catch (error) {
+      setRunning(false);
+      setResult(error.message);
     }
   };
 

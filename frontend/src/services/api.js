@@ -65,6 +65,20 @@ export const shieldApi = {
   protectedAppLoad: () =>
     request("/__shield/protected-app/load"),
 
+  layer4Health: () => request("/__shield/layer4/health"),
+  layer4Metrics: () => request("/__shield/layer4/metrics"),
+  layer4Connections: () => request("/__shield/layer4/connections"),
+  layer4Blocked: () => request("/__shield/layer4/blocked"),
+  layer4Events: (limit = 50) => request(`/__shield/layer4/events?limit=${limit}`),
+
+  startSimulation: (payload) => request("/__shield/simulations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+  simulationStatus: () => request("/__shield/simulations/status"),
+  simulationResults: () => request("/__shield/simulations/results"),
+  cancelSimulation: () => request("/__shield/simulations/cancel", { method: "POST" }),
+
   reset: () =>
     request("/__shield/reset", {
       method: "POST"

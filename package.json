@@ -20,8 +20,9 @@
     "sim:compare:flood": "SCENARIO=flood node simulator/compare-without-with-shield.js",
     "sim:basic-preservation": "node simulator/basic-preservation.js",
     "validate:backend": "node validation/backend-validation.js",
+    "test": "node validation/frontend-validation.js",
     "validate:frontend": "npm --prefix frontend run build",
-    "validate:all": "npm run validate:frontend && npm run validate:backend",
+    "validate:all": "npm test && npm run validate:frontend && npm run validate:backend",
     "sim:tcp-burst": "node simulator/tcp-connection-burst.js",
     "run:app": "node src/protected-app/server.js",
     "run:gateway": "node src/gateway/server.js",
@@ -41,15 +42,7 @@
     "concurrently": "^9.2.1",
     "nodemon": "^3.1.14"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yotamgr314/AvailabilityShield.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/yotamgr314/AvailabilityShield/issues"
-  },
-  "homepage": "https://github.com/yotamgr314/AvailabilityShield#readme"
+  "keywords": ["ddos", "availability", "layer4", "layer7", "mitigation"],
+  "author": "AvailabilityShield team",
+  "license": "ISC"
 }

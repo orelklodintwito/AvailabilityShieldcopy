@@ -16,6 +16,8 @@ const { getRecentRequestLogs } = require("../logs/request-log.service");
 const { getRecentSecurityEvents } = require("../logs/security-event.service");
 const { writeMetricSnapshot, getRecentMetricSnapshots } = require("../logs/metric-log.service");
 const { getQueueSnapshot, resetQueue } = require("./queue/request-queue");
+const { getMetrics: getLayer4Metrics, getEvents: getLayer4Events, getConnections: getLayer4Connections, getBlocked: getLayer4Blocked } = require("../layer4/layer4-service");
+const simulations = require("./simulations/simulation-manager");
 
 const app = express();
 
@@ -24,8 +26,8 @@ const HEALTH_TIMEOUT_MS = Number(
   process.env.PROTECTED_APP_HEALTH_TIMEOUT_MS || 1500
 );
 
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173" }));
+app.use(express.json({ limit: "32kb" }));
 app.use(morgan("dev"));
 
 function clampLimit(value, fallback, maximum) {
@@ -238,10 +240,68 @@ app.get("/__shield/metric-snapshots", (req, res) => {
   });
 });
 
+app.get("/__shield/layer4/health", (req, res) => {
+  const metrics = getLayer4Metrics();
+  res.json({ status: metrics.running ? "healthy" : "unavailable", ...metrics, timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/layer4/metrics", (req, res) => {
+  res.json({ metrics: getLayer4Metrics(), timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/layer4/connections", (req, res) => {
+  res.json({ connections: getLayer4Connections(), timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/layer4/blocked", (req, res) => {
+  res.json({ blocked: getLayer4Blocked(), timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/layer4/events", (req, res) => {
+  res.json({ events: getLayer4Events(clampLimit(req.query.limit, 50, 200)), timestamp: new Date().toISOString() });
+});
+
+function developmentOnly(req, res, next) {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ error: "Not found" });
+  }
+  return next();
+}
+
+app.post("/__shield/simulations", developmentOnly, (req, res) => {
+  try {
+    res.status(202).json({ simulation: simulations.start(req.body), timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(error.code === "SIMULATION_ALREADY_RUNNING" ? 409 : 400).json({ error: error.code || "INVALID_SIMULATION", message: error.message, timestamp: new Date().toISOString() });
+  }
+});
+
+app.get("/__shield/simulations/status", developmentOnly, (req, res) => {
+  res.json({ simulation: simulations.getStatus(), timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/simulations/results", developmentOnly, (req, res) => {
+  res.json({ result: simulations.getResults(), timestamp: new Date().toISOString() });
+});
+
+app.post("/__shield/simulations/cancel", developmentOnly, (req, res) => {
+  res.json({ simulation: simulations.cancel(), timestamp: new Date().toISOString() });
+});
+
 app.use(requestContextMiddleware);
 app.use(metricsMiddleware);
 app.use(mitigationMiddleware);
 app.use(createReverseProxy());
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  const status = Number(error.statusCode || error.status || 500);
+  res.status(status >= 400 && status < 600 ? status : 500).json({
+    success: false,
+    error: { code: error.code || "GATEWAY_ERROR", message: status === 500 ? "Gateway request failed" : error.message },
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.listen(PORT, () => {
   const policy = loadPolicy();
