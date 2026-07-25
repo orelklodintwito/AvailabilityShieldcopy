@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const axios = require("axios");
 
 const { loadPolicy } = require("./policies/policy-loader");
 const { requestContextMiddleware } = require("./middleware/request-context.middleware");
@@ -19,20 +20,160 @@ const { getQueueSnapshot, resetQueue } = require("./queue/request-queue");
 const app = express();
 
 const PORT = process.env.GATEWAY_PORT || 4000;
+const HEALTH_TIMEOUT_MS = Number(
+  process.env.PROTECTED_APP_HEALTH_TIMEOUT_MS || 1500
+);
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.get("/__shield/health", (req, res) => {
+function clampLimit(value, fallback, maximum) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(Math.trunc(parsed), 1), maximum);
+}
+
+async function getProtectedAppStatus() {
   const policy = loadPolicy();
+  const target = policy.protectedTarget.replace(/\/$/, "");
+  const checkedAt = new Date().toISOString();
+
+  try {
+    const [healthResponse, loadResponse] = await Promise.all([
+      axios.get(`${target}/health`, {
+        timeout: HEALTH_TIMEOUT_MS
+      }),
+      axios.get(`${target}/__app/load`, {
+        timeout: HEALTH_TIMEOUT_MS
+      })
+    ]);
+
+    const load = loadResponse.data || {};
+    const config = load.config || {};
+    const degradeThreshold = Number(
+      config.basicDegradeActiveHeavy || 4
+    );
+    const activeHeavyRequests = Number(
+      load.activeHeavyRequests || 0
+    );
+
+    const status =
+      activeHeavyRequests >= degradeThreshold
+        ? "degraded"
+        : "healthy";
+
+    return {
+      status,
+      reachable: true,
+      service: healthResponse.data?.service || "protected-web-app",
+      target,
+      activeRequests: Number(load.activeRequests || 0),
+      activeHeavyRequests,
+      rejectedDueToOverload: Number(
+        load.rejectedDueToOverload || 0
+      ),
+      basicRequestsDegraded: Number(
+        load.basicRequestsDegraded || 0
+      ),
+      checkedAt
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      reachable: false,
+      target,
+      error:
+        error.code === "ECONNABORTED"
+          ? "Protected app health check timed out"
+          : "Protected app could not be reached",
+      checkedAt
+    };
+  }
+}
+
+function getCurrentSeverity(metrics) {
+  const latest = metrics.recentRequests?.[0];
+  return latest?.severity || "normal";
+}
+
+app.get("/__shield/health", async (req, res) => {
+  const policy = loadPolicy();
+  const protectedApp = await getProtectedAppStatus();
 
   res.json({
     service: "availabilityshield-gateway",
     status: "ok",
+    gateway: {
+      status: "healthy",
+      port: Number(PORT)
+    },
+    protectedApp,
+    overallStatus:
+      protectedApp.status === "unavailable"
+        ? "degraded"
+        : protectedApp.status,
     protectedTarget: policy.protectedTarget,
     timestamp: new Date().toISOString()
   });
+});
+
+app.get("/__shield/overview", async (req, res) => {
+  const metrics = getMetricsSnapshot();
+  const queue = getQueueSnapshot();
+  const protectedApp = await getProtectedAppStatus();
+
+  res.json({
+    gateway: {
+      status: "healthy",
+      port: Number(PORT)
+    },
+    protectedApp,
+    currentSeverity: getCurrentSeverity(metrics),
+    traffic: {
+      requestsPerSecond: metrics.requestsPerSecond,
+      requestsPerMinute: metrics.requestsPerMinute,
+      activeRequests: metrics.activeRequests,
+      activeHeavyRequests: metrics.activeHeavyRequests,
+      averageResponseTime: metrics.averageResponseTime,
+      errorRate: metrics.errorRate
+    },
+    mitigation: {
+      decisions: metrics.decisions,
+      severityDistribution: metrics.severityDistribution,
+      dropped: metrics.decisions.drop || 0,
+      limited: metrics.decisions.limit || 0,
+      queued: metrics.decisions.queue || 0
+    },
+    queue,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get("/__shield/protected-app/load", async (req, res) => {
+  const policy = loadPolicy();
+  const target = policy.protectedTarget.replace(/\/$/, "");
+
+  try {
+    const response = await axios.get(`${target}/__app/load`, {
+      timeout: HEALTH_TIMEOUT_MS
+    });
+
+    res.json({
+      load: response.data,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      error: "PROTECTED_APP_UNAVAILABLE",
+      message: "Protected app load information is unavailable",
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.post("/__shield/reset", (req, res) => {
@@ -62,16 +203,16 @@ app.get("/__shield/metrics", (req, res) => {
   const snapshot = {
     metrics: getMetricsSnapshot(),
     windows: getWindowSnapshot(),
-    queue: getQueueSnapshot()
+    queue: getQueueSnapshot(),
+    timestamp: new Date().toISOString()
   };
 
   writeMetricSnapshot(snapshot);
-
   res.json(snapshot);
 });
 
 app.get("/__shield/requests", (req, res) => {
-  const limit = Number(req.query.limit || 50);
+  const limit = clampLimit(req.query.limit, 50, 200);
 
   res.json({
     logs: getRecentRequestLogs(limit),
@@ -80,7 +221,7 @@ app.get("/__shield/requests", (req, res) => {
 });
 
 app.get("/__shield/events", (req, res) => {
-  const limit = Number(req.query.limit || 50);
+  const limit = clampLimit(req.query.limit, 50, 200);
 
   res.json({
     events: getRecentSecurityEvents(limit),
@@ -89,7 +230,7 @@ app.get("/__shield/events", (req, res) => {
 });
 
 app.get("/__shield/metric-snapshots", (req, res) => {
-  const limit = Number(req.query.limit || 20);
+  const limit = clampLimit(req.query.limit, 20, 200);
 
   res.json({
     snapshots: getRecentMetricSnapshots(limit),

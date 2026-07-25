@@ -1,5 +1,8 @@
 const { loadPolicy, getEndpointPolicy } = require("../policies/policy-loader");
-const { getMetricsSnapshot } = require("../../analyzer/traffic-metrics");
+const {
+  getMetricsSnapshot,
+  recordRequestClassification
+} = require("../../analyzer/traffic-metrics");
 const { recordRequestInWindow } = require("../../analyzer/request-window-store");
 const { decideMitigation } = require("../engine/rule-engine");
 const { applyDecision } = require("../engine/decision-actions");
@@ -33,6 +36,8 @@ async function mitigationMiddleware(req, res, next) {
   context.delayMs = decision.delayMs || 0;
   context.queueWaitMs = 0;
   context.windowStats = windowStats;
+
+  recordRequestClassification(context);
 
   req.shieldPolicy = policy;
 
