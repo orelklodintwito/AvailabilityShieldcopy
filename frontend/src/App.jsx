@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
+import React, { useMemo, useState } from "react";
 
 import {
   Activity,
@@ -31,6 +26,7 @@ import TopAttackers from "./components/TopAttackers.jsx";
 import TrafficByLayer from "./components/TrafficByLayer.jsx";
 
 import { shieldApi } from "./services/api.js";
+import { useShieldDashboard } from "./hooks/useShieldDashboard.js";
 
 const number = new Intl.NumberFormat("en-US");
 
@@ -52,90 +48,7 @@ export default function App() {
   const [activeSection, setActiveSection] =
     useState("Dashboard");
 
-  const [data, setData] = useState({
-    health: null,
-    metrics: null,
-    events: [],
-    logs: [],
-    policy: null,
-    snapshots: []
-  });
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [lastUpdated, setLastUpdated] =
-    useState(null);
-
-  const loadDashboard = useCallback(
-    async (quiet = false) => {
-      if (!quiet) {
-        setLoading(true);
-      }
-
-      try {
-        const [
-          health,
-          metrics,
-          events,
-          logs,
-          policy,
-          snapshots
-        ] = await Promise.all([
-          shieldApi.health(),
-          shieldApi.metrics(),
-          shieldApi.events(20),
-          shieldApi.requests(30),
-          shieldApi.policy(),
-          shieldApi.snapshots(18)
-        ]);
-
-        setData({
-          health,
-          metrics,
-          events: events.events || [],
-          logs: logs.logs || [],
-          policy,
-          snapshots:
-            snapshots.snapshots || []
-        });
-
-        setLastUpdated(new Date());
-        setError("");
-      } catch (err) {
-        setError(
-          err.message ||
-            "Could not connect to the gateway"
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    loadDashboard();
-
-    const timer = setInterval(() => {
-      loadDashboard(true);
-    }, 5000);
-
-    return () => {
-      clearInterval(timer);
-    };
-  }, [loadDashboard]);
-
-  const reset = async () => {
-    try {
-      await shieldApi.reset();
-      await loadDashboard();
-    } catch (err) {
-      setError(
-        err.message ||
-          "Could not reset gateway metrics"
-      );
-    }
-  };
+  const { data, loading, error, lastUpdated, loadDashboard, reset } = useShieldDashboard();
 
   const metrics =
     data.metrics?.metrics || {};

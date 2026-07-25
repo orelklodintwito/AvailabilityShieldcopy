@@ -21,6 +21,20 @@ const simulations = require("./simulations/simulation-manager");
 
 const app = express();
 
+// Keep backwards-compatible top-level fields while exposing one stable API envelope.
+app.use((req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body) => {
+    if (body && Object.prototype.hasOwnProperty.call(body, "success")) return json(body);
+    const timestamp = body?.timestamp || new Date().toISOString();
+    if (res.statusCode >= 400) {
+      return json({ success: false, error: { code: body?.error || "REQUEST_FAILED", message: body?.message || body?.error || "Request failed" }, timestamp, ...body });
+    }
+    return json({ success: true, data: body, timestamp, ...body });
+  };
+  next();
+});
+
 const PORT = process.env.GATEWAY_PORT || 4000;
 const HEALTH_TIMEOUT_MS = Number(
   process.env.PROTECTED_APP_HEALTH_TIMEOUT_MS || 1500
