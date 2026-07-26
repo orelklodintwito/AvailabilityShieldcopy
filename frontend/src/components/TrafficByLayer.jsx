@@ -1,10 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Layers3 } from "lucide-react";
 
 export default function TrafficByLayer({ logs = [], metrics = {} }) {
   const values = useMemo(() => {
     const l7 = logs.length || metrics.totalRequests || 0;
-    const l4 = Number(metrics.layer4Requests || metrics.connectionCount || 0);
+    const l4 = Number(metrics.layer4?.stats?.totalTcpSynSeen || metrics.layer4Requests || metrics.connectionCount || 0);
     const other = Number(metrics.otherRequests || 0);
     const total = Math.max(l4 + l7 + other, 1);
 

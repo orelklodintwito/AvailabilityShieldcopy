@@ -5,8 +5,11 @@ const state = {
   totalDequeued: 0,
   totalQueueRejected: 0,
   maxObservedQueueSize: 0,
+  totalWaitMs: 0,
+  maxWaitMs: 0,
   waiting: [],
-  maxConcurrentHeavyForwarded: 4
+  maxConcurrentHeavyForwarded: 4,
+  maxGatewayQueueSize: 100
 };
 
 function getQueueConfig(policy) {
@@ -38,15 +41,19 @@ function drainQueue() {
     state.activeHeavyForwarded < state.maxConcurrentHeavyForwarded
   ) {
     const item = state.waiting.shift();
+    if (item.timer) clearTimeout(item.timer);
 
     state.queuedHeavy = state.waiting.length;
     state.activeHeavyForwarded += 1;
     state.totalDequeued += 1;
 
+    const waitMs = Date.now() - item.enqueuedAt;
+    state.totalWaitMs += waitMs;
+    state.maxWaitMs = Math.max(state.maxWaitMs, waitMs);
     item.resolve({
       rejected: false,
       queued: true,
-      waitMs: Date.now() - item.enqueuedAt,
+      waitMs,
       release: createRelease()
     });
   }
@@ -56,6 +63,7 @@ function acquireHeavySlot(context, policy) {
   const config = getQueueConfig(policy);
 
   state.maxConcurrentHeavyForwarded = config.maxConcurrentHeavyForwarded;
+  state.maxGatewayQueueSize = config.maxGatewayQueueSize;
 
   if (state.activeHeavyForwarded < config.maxConcurrentHeavyForwarded) {
     state.activeHeavyForwarded += 1;
@@ -82,11 +90,20 @@ function acquireHeavySlot(context, policy) {
   state.totalQueued += 1;
 
   return new Promise((resolve) => {
-    state.waiting.push({
+    const timeoutMs = Number(thresholdsOrDefault(policy, "maxQueueWaitMs", 15000));
+    const item = {
       context,
       enqueuedAt: Date.now(),
       resolve
-    });
+    };
+    item.timer = setTimeout(() => {
+      const index = state.waiting.indexOf(item);
+      if (index === -1) return;
+      state.waiting.splice(index, 1);
+      state.queuedHeavy = state.waiting.length;
+      resolve({ rejected: true, timedOut: true, queued: false, waitMs: Date.now() - item.enqueuedAt, release: () => {} });
+    }, timeoutMs);
+    state.waiting.push(item);
 
     state.queuedHeavy = state.waiting.length;
     state.maxObservedQueueSize = Math.max(
@@ -94,6 +111,10 @@ function acquireHeavySlot(context, policy) {
       state.waiting.length
     );
   });
+}
+
+function thresholdsOrDefault(policy, key, fallback) {
+  return policy?.thresholds?.[key] ?? fallback;
 }
 
 function getQueueSnapshot() {
@@ -104,6 +125,9 @@ function getQueueSnapshot() {
     totalDequeued: state.totalDequeued,
     totalQueueRejected: state.totalQueueRejected,
     maxObservedQueueSize: state.maxObservedQueueSize,
+    averageWaitMs: state.totalDequeued ? Math.round(state.totalWaitMs / state.totalDequeued) : 0,
+    maximumWaitMs: state.maxWaitMs,
+    configuredMaximumQueueSize: state.maxGatewayQueueSize || 100,
     maxConcurrentHeavyForwarded: state.maxConcurrentHeavyForwarded
   };
 }
@@ -115,6 +139,13 @@ function resetQueue() {
   state.totalDequeued = 0;
   state.totalQueueRejected = 0;
   state.maxObservedQueueSize = 0;
+  state.maxGatewayQueueSize = 100;
+  state.totalWaitMs = 0;
+  state.maxWaitMs = 0;
+  for (const item of state.waiting) {
+    if (item.timer) clearTimeout(item.timer);
+    item.resolve({ rejected: true, reset: true, queued: false, waitMs: 0, release: () => {} });
+  }
   state.waiting.splice(0, state.waiting.length);
 }
 

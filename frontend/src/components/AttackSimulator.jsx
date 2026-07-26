@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, FlaskConical, LoaderCircle, Play } from "lucide-react";
 import { shieldApi } from "../services/api.js";
 
@@ -101,6 +101,7 @@ export default function AttackSimulator({ onComplete }) {
       </div>
 
       {result && <div className="simulator-result">{result}</div>}
+      {running && <div className="simulator-progress" role="status">Progress: {progress}%</div>}
     </section>
   );
 }

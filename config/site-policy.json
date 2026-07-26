@@ -8,6 +8,7 @@
     "maxActiveRequestsBeforeQueue": 3,
     "maxConcurrentHeavyForwarded": 3,
     "maxGatewayQueueSize": 100,
+    "maxQueueWaitMs": 15000,
     "defaultDelayMs": 300,
     "queueDelayMs": 0
   },

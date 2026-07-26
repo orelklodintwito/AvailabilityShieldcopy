@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Activity,
@@ -12,20 +12,18 @@ import {
   Server,
   Settings,
   ShieldCheck,
-  SlidersHorizontal,
   Users
 } from "lucide-react";
 
 import Sidebar from "./components/Sidebar.jsx";
 import StatCard from "./components/StatCard.jsx";
 import TrafficChart from "./components/TrafficChart.jsx";
-import AttackSimulator from "./components/AttackSimulator.jsx";
 import ExportReport from "./components/ExportReport.jsx";
+import AttackSimulator from "./components/AttackSimulator.jsx";
 import SystemHealth from "./components/SystemHealth.jsx";
 import TopAttackers from "./components/TopAttackers.jsx";
 import TrafficByLayer from "./components/TrafficByLayer.jsx";
 
-import { shieldApi } from "./services/api.js";
 import { useShieldDashboard } from "./hooks/useShieldDashboard.js";
 import { resolveSection } from "./app/routes.jsx";
 
@@ -59,6 +57,7 @@ export default function App() {
 
   const decisions =
     metrics.decisions || {};
+  const layer4 = data.layer4?.metrics || {};
 
   const totalMitigated =
     (decisions.limit || 0) +
@@ -143,6 +142,14 @@ export default function App() {
           metrics.totalErrors || 0
         )} server errors`}
         tone="green"
+      />
+
+      <StatCard
+        icon={Server}
+        label="Layer 4 status"
+        value={data.layer4?.status || (layer4.running ? "Healthy" : "Unavailable")}
+        hint={`${number.format(layer4.stats?.totalTcpSynSeen || 0)} TCP SYN observed`}
+        tone={layer4.running ? "green" : "orange"}
       />
     </section>
   );
@@ -881,6 +888,7 @@ export default function App() {
             </button>
           </section>
         </section>
+        <AttackSimulator onComplete={() => loadDashboard(true)} />
       </>
     );
   };
@@ -1054,7 +1062,7 @@ export default function App() {
 
       <TrafficByLayer
         logs={data.logs}
-        metrics={metrics}
+        metrics={{ ...metrics, layer4 }}
       />
 
       <TopAttackers

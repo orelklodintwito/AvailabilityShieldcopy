@@ -4,3 +4,11 @@ dist/
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+logs/
+captures/
+data/*.db
+data/*.db-shm
+data/*.db-wal
+logs/layer4/
+validation/*.json
+validation/*.txt

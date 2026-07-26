@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Crosshair } from "lucide-react";
 
 export default function TopAttackers({ logs = [], events = [] }) {

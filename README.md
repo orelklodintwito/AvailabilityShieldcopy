@@ -17,7 +17,9 @@ If Layer 4 dependencies are unavailable, run the app, gateway and frontend separ
 
 ## Validation
 
-With the protected app and gateway running: `npm run build`, `npm run validate:backend`, and `npm run validate:all`.
+With the protected app and gateway running: `npm run build`, `npm run lint`, `npm test`, and `npm run validate:all`.
+
+`validate:all` runs frontend structure/unit checks, ESLint, production build, Layer 4 policy checks, and the live backend scenarios. The live backend portion requires the app and gateway; Layer 4 packet enforcement additionally requires PyDivert and Administrator privileges.
 
 The simulator is local-only, uses an allow-listed scenario set, caps request count and concurrency, and never executes a client-provided shell command.
 

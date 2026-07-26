@@ -1,4 +1,3 @@
-import React from "react";
 import { Download } from "lucide-react";
 
 function downloadFile(name, content, type) {

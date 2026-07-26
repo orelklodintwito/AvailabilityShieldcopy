@@ -24,8 +24,12 @@ async function applyHeavyConcurrencyGate(req, res) {
   if (slot.rejected) {
     context.decision = "drop";
     context.severity = "critical";
-    context.reason = "Gateway queue is full. Heavy request dropped before reaching protected app";
-    context.queueWaitMs = 0;
+    context.reason = slot.timedOut
+      ? "Gateway queue wait timed out before forwarding heavy request"
+      : slot.reset
+        ? "Gateway queue was reset before forwarding heavy request"
+        : "Gateway queue is full. Heavy request dropped before reaching protected app";
+    context.queueWaitMs = slot.waitMs || 0;
 
     return false;
   }
