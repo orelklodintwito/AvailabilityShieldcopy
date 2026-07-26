@@ -1,9 +1,17 @@
 node_modules/
+__pycache__/
+.staging-clean-clone/
 dist/
 .env
+.env.*
+!.env.example
+!.env.production.example
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.production.example
 logs/
 captures/
 data/*.db

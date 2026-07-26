@@ -2,8 +2,11 @@ const fs = require("fs");
 const path = require("path");
 
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
-const METRICS_PATH = path.join(PROJECT_ROOT, "logs", "layer4", "layer4-metrics.json");
-const EVENTS_PATH = path.join(PROJECT_ROOT, "logs", "layer4", "layer4-events.jsonl");
+const LOG_DIR = process.env.AVAILABILITYSHIELD_LOG_DIR
+  ? path.resolve(process.env.AVAILABILITYSHIELD_LOG_DIR)
+  : path.join(PROJECT_ROOT, "logs", "layer4");
+const METRICS_PATH = path.join(LOG_DIR, "layer4-metrics.json");
+const EVENTS_PATH = path.join(LOG_DIR, "layer4-events.jsonl");
 const POLICY_PATH = path.join(PROJECT_ROOT, "layer4", "l4-policy.json");
 
 function readJson(filePath, fallback) {

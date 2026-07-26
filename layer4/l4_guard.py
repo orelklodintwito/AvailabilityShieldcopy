@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import signal
 import sys
 import time
@@ -16,7 +17,7 @@ except ImportError:
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = PROJECT_ROOT / "layer4" / "l4-policy.json"
-LOG_DIR = PROJECT_ROOT / "logs" / "layer4"
+LOG_DIR = Path(os.environ.get("AVAILABILITYSHIELD_LOG_DIR", PROJECT_ROOT / "logs" / "layer4"))
 EVENT_LOG_PATH = LOG_DIR / "layer4-events.jsonl"
 METRICS_PATH = LOG_DIR / "layer4-metrics.json"
 
