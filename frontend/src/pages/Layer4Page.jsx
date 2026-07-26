@@ -1,0 +1,7 @@
+import { EmptyState } from "./PageStates.jsx";
+
+export default function Layer4Page({ layer4 }) {
+  const stats = layer4.stats || {};
+  const sources = Object.entries(stats.bySource || {});
+  return <section className="dashboard-grid"><section className="panel full-width"><div className="panel-title"><div><h2>Layer 4 protection</h2><p>{layer4.running ? "Live TCP/SYN telemetry" : "Layer 4 guard is unavailable or stale"}</p></div><strong>{layer4.running ? "HEALTHY" : "UNAVAILABLE"}</strong></div><div className="stats-grid">{[["TCP SYN seen", stats.totalTcpSynSeen], ["Allowed", stats.totalAllowed], ["Dropped", stats.totalDropped], ["Warnings", stats.totalWarnings], ["High severity", stats.totalHigh]].map(([label, value]) => <article className="stat-card" key={label}><span>{label}</span><strong>{value || 0}</strong></article>)}</div></section><section className="panel table-panel wide full-width"><div className="panel-title"><div><h2>Connections by source</h2><p>Source counters and blocked addresses</p></div></div><div className="table-scroll"><table><thead><tr><th>Source</th><th>SYN</th><th>Allowed</th><th>Dropped</th></tr></thead><tbody>{sources.map(([ip, value]) => <tr key={ip}><td>{ip}</td><td>{value.totalSyn || 0}</td><td>{value.allowed || 0}</td><td>{value.dropped || 0}</td></tr>)}</tbody></table>{!sources.length && <EmptyState label="No Layer 4 source activity is available." />}</div></section></section>;
+}

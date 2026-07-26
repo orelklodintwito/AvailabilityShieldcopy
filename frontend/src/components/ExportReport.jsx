@@ -35,6 +35,24 @@ export default function ExportReport({ data }) {
     );
   };
 
+  const exportPdf = async () => {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF();
+    const metrics = data.metrics || {};
+    const queue = data.queue || {};
+    pdf.setFontSize(18);
+    pdf.text("AvailabilityShield Report", 14, 18);
+    pdf.setFontSize(10);
+    pdf.text(`Generated: ${data.generatedAt || new Date().toISOString()}`, 14, 27);
+    pdf.text(`Requests: ${metrics.totalRequests || 0}`, 14, 40);
+    pdf.text(`Error rate: ${((metrics.errorRate || 0) * 100).toFixed(2)}%`, 14, 48);
+    pdf.text(`Average response: ${metrics.averageResponseTime || 0} ms`, 14, 56);
+    pdf.text(`Queued: ${queue.totalQueued || 0} | Rejected: ${queue.totalQueueRejected || 0}`, 14, 64);
+    pdf.text(`Decisions: ${JSON.stringify(metrics.decisions || {})}`, 14, 74, { maxWidth: 180 });
+    pdf.text("Conclusion: AvailabilityShield preserved the protected service while applying policy-driven mitigation.", 14, 92, { maxWidth: 180 });
+    pdf.save(`availabilityshield-report-${Date.now()}.pdf`);
+  };
+
   return (
     <section className="panel export-panel full-width">
       <div className="panel-title">
@@ -51,6 +69,9 @@ export default function ExportReport({ data }) {
         </button>
         <button type="button" className="secondary-button" onClick={exportCsv}>
           <Download size={16} /> Export request CSV
+        </button>
+        <button type="button" className="secondary-button" onClick={exportPdf}>
+          <Download size={16} /> Export PDF
         </button>
       </div>
     </section>

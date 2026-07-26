@@ -6,6 +6,8 @@ AvailabilityShield is a local IPS-style availability protection lab. It combines
 
 Requirements: Node.js 18+, npm, and (for Layer 4) Python 3, PyDivert and Administrator privileges on Windows.
 
+Install the optional Layer 4 dependency with `py -3 -m pip install -r layer4/requirements.txt`, then run the terminal as Administrator.
+
 ```bash
 npm run install:all
 npm run dev:all
@@ -24,3 +26,7 @@ With the protected app and gateway running: `npm run build`, `npm run lint`, `np
 The simulator is local-only, uses an allow-listed scenario set, caps request count and concurrency, and never executes a client-provided shell command.
 
 See [docs/architecture.md](docs/architecture.md), [docs/api.md](docs/api.md), [docs/testing.md](docs/testing.md), and [docs/demo-plan.md](docs/demo-plan.md).
+
+## Completion checklist
+
+The repository now includes clean environment handling, one-command startup, a gateway API contract, Vite proxying, page-level React structure, real metrics/queues/events, Layer 4 routes, a safe browser simulator, JSON/CSV/PDF reports, loading/error/disconnected states, ESLint/Vitest coverage, edge-case validation, and the documented demo flow.

@@ -5,7 +5,7 @@ export default [{
   ignores: ["dist/**"],
   languageOptions: {
     parserOptions: { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true } },
-    globals: { window: "readonly", fetch: "readonly", AbortController: "readonly", document: "readonly", URL: "readonly", Blob: "readonly" }
+    globals: { window: "readonly", fetch: "readonly", AbortController: "readonly", AbortSignal: "readonly", document: "readonly", URL: "readonly", Blob: "readonly" }
   },
   plugins: { "react-hooks": reactHooks },
   rules: {

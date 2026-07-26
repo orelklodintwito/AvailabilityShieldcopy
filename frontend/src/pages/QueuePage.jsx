@@ -1,0 +1,4 @@
+export default function QueuePage({ queue }) {
+  const values = [["Currently queued", queue.queuedHeavy], ["Active forwarded", queue.activeHeavyForwarded], ["Total queued", queue.totalQueued], ["Total dequeued", queue.totalDequeued], ["Queue rejections", queue.totalQueueRejected], ["Average wait", `${queue.averageWaitMs || 0} ms`], ["Maximum wait", `${queue.maximumWaitMs || 0} ms`], ["Configured max size", queue.configuredMaximumQueueSize || 100]];
+  return <section className="dashboard-grid"><section className="panel full-width"><div className="panel-title"><div><h2>Gateway queue</h2><p>Bounded heavy-request concurrency and wait-time telemetry</p></div></div><div className="stats-grid">{values.map(([label, value]) => <article className="stat-card" key={label}><span>{label}</span><strong>{value ?? 0}</strong></article>)}</div></section></section>;
+}

@@ -54,6 +54,13 @@ function clampLimit(value, fallback, maximum) {
   return Math.min(Math.max(Math.trunc(parsed), 1), maximum);
 }
 
+function readLimit(value, fallback, maximum) {
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > maximum) return null;
+  return parsed;
+}
+
 async function getProtectedAppStatus() {
   const policy = loadPolicy();
   const target = policy.protectedTarget.replace(/\/$/, "");
@@ -192,7 +199,14 @@ app.get("/__shield/protected-app/load", async (req, res) => {
   }
 });
 
-app.post("/__shield/reset", (req, res) => {
+function developmentOnly(req, res, next) {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ error: "Not found" });
+  }
+  return next();
+}
+
+app.post("/__shield/reset", developmentOnly, (req, res) => {
   resetMetrics();
   resetWindows();
   resetQueue();
@@ -228,7 +242,8 @@ app.get("/__shield/metrics", (req, res) => {
 });
 
 app.get("/__shield/requests", (req, res) => {
-  const limit = clampLimit(req.query.limit, 50, 200);
+  const limit = readLimit(req.query.limit, 50, 200);
+  if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
     logs: getRecentRequestLogs(limit),
@@ -237,7 +252,8 @@ app.get("/__shield/requests", (req, res) => {
 });
 
 app.get("/__shield/events", (req, res) => {
-  const limit = clampLimit(req.query.limit, 50, 200);
+  const limit = readLimit(req.query.limit, 50, 200);
+  if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
     events: getRecentSecurityEvents(limit),
@@ -246,7 +262,8 @@ app.get("/__shield/events", (req, res) => {
 });
 
 app.get("/__shield/metric-snapshots", (req, res) => {
-  const limit = clampLimit(req.query.limit, 20, 200);
+  const limit = readLimit(req.query.limit, 20, 200);
+  if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
     snapshots: getRecentMetricSnapshots(limit),
@@ -274,13 +291,6 @@ app.get("/__shield/layer4/blocked", (req, res) => {
 app.get("/__shield/layer4/events", (req, res) => {
   res.json({ events: getLayer4Events(clampLimit(req.query.limit, 50, 200)), timestamp: new Date().toISOString() });
 });
-
-function developmentOnly(req, res, next) {
-  if (process.env.NODE_ENV === "production") {
-    return res.status(404).json({ error: "Not found" });
-  }
-  return next();
-}
 
 app.post("/__shield/simulations", developmentOnly, (req, res) => {
   try {

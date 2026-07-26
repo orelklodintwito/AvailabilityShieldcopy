@@ -9,13 +9,17 @@ export function useShieldDashboard(intervalMs = 5000) {
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
   const mounted = useRef(true);
+  const activeRequest = useRef(null);
 
   const loadDashboard = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
+    activeRequest.current?.abort();
+    activeRequest.current = new AbortController();
+    const requestOptions = { signal: activeRequest.current.signal, retry: 1 };
     try {
       const [health, overview, metrics, events, logs, policy, snapshots, layer4] = await Promise.all([
-        shieldApi.health(), shieldApi.overview(), shieldApi.metrics(), shieldApi.events(50),
-        shieldApi.requests(50), shieldApi.policy(), shieldApi.snapshots(24), shieldApi.layer4Metrics()
+        shieldApi.health(requestOptions), shieldApi.overview(requestOptions), shieldApi.metrics(requestOptions), shieldApi.events(50, requestOptions),
+        shieldApi.requests(50, requestOptions), shieldApi.policy(requestOptions), shieldApi.snapshots(24, requestOptions), shieldApi.layer4Metrics(requestOptions)
       ]);
       if (!mounted.current) return;
       setData({ health, overview, metrics, events: events.events || [], logs: logs.logs || [], policy, snapshots: snapshots.snapshots || [], layer4 });
@@ -32,7 +36,7 @@ export function useShieldDashboard(intervalMs = 5000) {
     mounted.current = true;
     loadDashboard();
     const timer = window.setInterval(() => loadDashboard(true), intervalMs);
-    return () => { mounted.current = false; window.clearInterval(timer); };
+    return () => { mounted.current = false; activeRequest.current?.abort(); window.clearInterval(timer); };
   }, [intervalMs, loadDashboard]);
 
   const reset = useCallback(async () => {

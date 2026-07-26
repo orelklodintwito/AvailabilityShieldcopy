@@ -37,6 +37,10 @@ const navigationItems = [
     icon: ListChecks
   },
   {
+    label: "Layer 4",
+    icon: ShieldCheck
+  },
+  {
     label: "Reports",
     icon: FileText
   },
