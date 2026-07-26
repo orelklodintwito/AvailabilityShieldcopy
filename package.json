@@ -2,6 +2,14 @@
   "name": "availabilityshield",
   "version": "1.0.0",
   "description": "IPS-style DDoS mitigation system for Layer 4 and Layer 7 availability protection",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orelklodintwito/AvailabilityShieldcopy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/orelklodintwito/AvailabilityShieldcopy/issues"
+  },
+  "homepage": "https://github.com/orelklodintwito/AvailabilityShieldcopy#readme",
   "main": "src/protected-app/server.js",
   "scripts": {
     "dev:app": "nodemon --ignore logs/** --ignore captures/** --ignore layer4/*.json src/protected-app/server.js",
