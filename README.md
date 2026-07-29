@@ -2,6 +2,13 @@
 
 AvailabilityShield is a local IPS-style availability protection lab. It combines a protected HTTP application, a Layer 7 gateway with policy-driven mitigation and queueing, optional Layer 4 SYN protection, SQLite-backed logs, a React dashboard, and bounded simulations.
 
+## Live demo
+
+- [Open the AvailabilityShield Dashboard](https://availabilityshield-dashboard.onrender.com/)
+- [API health check](https://availabilityshield-api.onrender.com/__shield/health)
+
+The free Render deployment runs the Layer 7 gateway, protected app, and React dashboard. The PyDivert Layer 4 guard remains a local Windows component.
+
 ## Run
 
 Requirements: Node.js 18+, npm, and (for Layer 4) Python 3, PyDivert and Administrator privileges on Windows.

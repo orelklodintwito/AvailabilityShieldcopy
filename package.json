@@ -9,7 +9,7 @@
   "bugs": {
     "url": "https://github.com/orelklodintwito/AvailabilityShieldcopy/issues"
   },
-  "homepage": "https://github.com/orelklodintwito/AvailabilityShieldcopy#readme",
+  "homepage": "https://availabilityshield-dashboard.onrender.com/",
   "main": "src/protected-app/server.js",
   "scripts": {
     "dev:app": "nodemon --ignore logs/** --ignore captures/** --ignore layer4/*.json src/protected-app/server.js",
