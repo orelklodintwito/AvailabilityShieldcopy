@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { shieldApi } from "../services/api.js";
 
-const emptyData = { health: null, overview: null, metrics: null, events: [], logs: [], policy: null, snapshots: [], layer4: null };
+const emptyData = { health: null, overview: null, metrics: null, events: [], logs: [], policy: null, target: null, snapshots: [], layer4: null };
 
 export function useShieldDashboard(intervalMs = 5000) {
   const [data, setData] = useState(emptyData);
@@ -17,12 +17,12 @@ export function useShieldDashboard(intervalMs = 5000) {
     activeRequest.current = new AbortController();
     const requestOptions = { signal: activeRequest.current.signal, retry: 1 };
     try {
-      const [health, overview, metrics, events, logs, policy, snapshots, layer4] = await Promise.all([
+      const [health, overview, metrics, events, logs, policy, target, snapshots, layer4] = await Promise.all([
         shieldApi.health(requestOptions), shieldApi.overview(requestOptions), shieldApi.metrics(requestOptions), shieldApi.events(50, requestOptions),
-        shieldApi.requests(50, requestOptions), shieldApi.policy(requestOptions), shieldApi.snapshots(24, requestOptions), shieldApi.layer4Metrics(requestOptions)
+        shieldApi.requests(50, requestOptions), shieldApi.policy(requestOptions), shieldApi.target(requestOptions), shieldApi.snapshots(24, requestOptions), shieldApi.layer4Metrics(requestOptions)
       ]);
       if (!mounted.current) return;
-      setData({ health, overview, metrics, events: events.events || [], logs: logs.logs || [], policy, snapshots: snapshots.snapshots || [], layer4 });
+      setData({ health, overview, metrics, events: events.events || [], logs: logs.logs || [], policy, target, snapshots: snapshots.snapshots || [], layer4 });
       setLastUpdated(new Date());
       setError("");
     } catch (err) {

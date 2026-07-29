@@ -1,12 +1,10 @@
-﻿const { getDb, safeJson, parseJson } = require("../db/database");
+const { insertDocument, findRecentDocuments, safeJson } = require("../db/database");
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function writeSecurityEvent(context = {}) {
-  const db = getDb();
-
+async function writeSecurityEvent(context = {}) {
   const event = {
     type: "security_event",
     requestId: context.requestId ?? null,
@@ -21,70 +19,31 @@ function writeSecurityEvent(context = {}) {
     timestamp: nowIso()
   };
 
-  db.prepare(`
-    INSERT INTO security_events (
-      timestamp,
-      request_id,
-      ip,
-      method,
-      endpoint,
-      decision,
-      severity,
-      reason,
-      queue_wait_ms,
-      event_json
-    )
-    VALUES (
-      @timestamp,
-      @request_id,
-      @ip,
-      @method,
-      @endpoint,
-      @decision,
-      @severity,
-      @reason,
-      @queue_wait_ms,
-      @event_json
-    )
-  `).run({
-    timestamp: event.timestamp,
-    request_id: event.requestId,
-    ip: event.ip,
-    method: event.method,
-    endpoint: event.endpoint,
-    decision: event.decision,
-    severity: event.severity,
-    reason: event.reason,
-    queue_wait_ms: event.queueWaitMs,
-    event_json: safeJson(event)
+  await insertDocument("security_events", {
+    ...event,
+    event: safeJson(event)
   });
 }
 
-function mapSecurityEventRow(row) {
+function mapSecurityEventDocument(document) {
   return {
-    id: row.id,
-    timestamp: row.timestamp,
-    requestId: row.request_id,
-    ip: row.ip,
-    method: row.method,
-    endpoint: row.endpoint,
-    decision: row.decision,
-    severity: row.severity,
-    reason: row.reason,
-    queueWaitMs: row.queue_wait_ms,
-    event: parseJson(row.event_json, {})
+    id: String(document._id),
+    timestamp: document.timestamp,
+    requestId: document.requestId,
+    ip: document.ip,
+    method: document.method,
+    endpoint: document.endpoint,
+    decision: document.decision,
+    severity: document.severity,
+    reason: document.reason,
+    queueWaitMs: document.queueWaitMs,
+    event: document.event || {}
   };
 }
 
-function getRecentSecurityEvents(limit = 50) {
-  const db = getDb();
-
-  return db.prepare(`
-    SELECT *
-    FROM security_events
-    ORDER BY id DESC
-    LIMIT ?
-  `).all(limit).map(mapSecurityEventRow);
+async function getRecentSecurityEvents(limit = 50) {
+  const documents = await findRecentDocuments("security_events", limit);
+  return documents.map(mapSecurityEventDocument);
 }
 
 module.exports = {

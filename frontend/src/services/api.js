@@ -57,6 +57,14 @@ export const shieldApi = {
 
   policy: (options) => request("/__shield/policy", options),
 
+  target: (options) => request("/__shield/target", options),
+  checkTarget: (options) => request("/__shield/target/check", options),
+  updateTarget: (url, adminToken) => request("/__shield/target", {
+    method: "PUT",
+    headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined,
+    body: JSON.stringify({ url })
+  }),
+
   queue: (options) => request("/__shield/queue", options),
 
   snapshots: (limit = 16, options) => request(`/__shield/metric-snapshots?limit=${limit}`, options),

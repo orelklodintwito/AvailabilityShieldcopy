@@ -7,15 +7,6 @@ function decideMitigation({ context, endpointPolicy, windowStats, metricsSnapsho
   const activeRequests = metricsSnapshot.activeRequests || 0;
   const maxActiveBeforeQueue = thresholds.maxActiveRequestsBeforeQueue || 4;
 
-  if (!endpointPolicy) {
-    return {
-      decision: "allow",
-      severity: "normal",
-      delayMs: 0,
-      reason: "Endpoint is not listed in Site Policy, allowing for monitoring"
-    };
-  }
-
   if (endpointType === "heavy" && activeRequests > maxActiveBeforeQueue) {
     return {
       decision: "queue",

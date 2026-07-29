@@ -22,6 +22,8 @@ function metricsMiddleware(req, res, next) {
     writeRequestLog(req.shieldContext, {
       statusCode: res.statusCode,
       durationMs
+    }).catch((error) => {
+      console.error(`[AvailabilityShield] request log persistence failed: ${error.message}`);
     });
   });
 

@@ -48,18 +48,24 @@
   },
   "dependencies": {
     "axios": "^1.17.0",
-    "better-sqlite3": "^12.10.0",
     "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
     "http-proxy-middleware": "^3.0.6",
+    "mongodb": "^7.5.0",
     "morgan": "^1.11.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
   },
-  "keywords": ["ddos", "availability", "layer4", "layer7", "mitigation"],
+  "keywords": [
+    "ddos",
+    "availability",
+    "layer4",
+    "layer7",
+    "mitigation"
+  ],
   "author": "AvailabilityShield team",
   "license": "ISC"
 }

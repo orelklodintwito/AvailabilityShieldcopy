@@ -1,13 +1,13 @@
 # AvailabilityShield
 
-AvailabilityShield is a local IPS-style availability protection lab. It combines a protected HTTP application, a Layer 7 gateway with policy-driven mitigation and queueing, optional Layer 4 SYN protection, SQLite-backed logs, a React dashboard, and bounded simulations.
+AvailabilityShield is a Layer 7 reverse-proxy protection system with an optional local Windows Layer 4 SYN guard. The Gateway can protect the included demo app or any public HTTP/HTTPS site supplied by the lecturer, applying rate limit, delay, queue and drop decisions before forwarding traffic. MongoDB stores request logs, security events and metric snapshots; a React dashboard displays the decisions.
 
 ## Live demo
 
 - [Open the AvailabilityShield Dashboard](https://availabilityshield-dashboard.onrender.com/)
 - [API health check](https://availabilityshield-api.onrender.com/__shield/health)
 
-The free Render deployment runs the Layer 7 gateway, protected app, and React dashboard. The PyDivert Layer 4 guard remains a local Windows component.
+The free Render deployment runs the Layer 7 gateway, protected app and React dashboard. The PyDivert Layer 4 guard remains a local Windows component. Configure a MongoDB Atlas free cluster in Render with `MONGODB_URI` before using the deployment as a persistent demo.
 
 ## Run
 
@@ -20,7 +20,7 @@ npm run install:all
 npm run dev:all
 ```
 
-The protected app is on `http://localhost:3000`, gateway/API on `http://localhost:4000`, and Vite frontend on `http://localhost:5173`.
+The protected app is on `http://localhost:3000`, gateway/API on `http://localhost:4000`, and Vite frontend on `http://localhost:5173`. In the dashboard's Settings page, enter the lecturer's public `http://` or `https://` target and the configured `SHIELD_ADMIN_TOKEN`; all subsequent traffic through the Gateway is proxied to that site.
 
 If Layer 4 dependencies are unavailable, run the app, gateway and frontend separately with `npm run dev:app`, `npm run dev:gateway`, and `npm run dev:frontend`.
 
@@ -43,5 +43,5 @@ The repository now includes clean environment handling, one-command startup, a g
 Render can host the React dashboard, Gateway and Protected App for a free demo.
 Apply `render.yaml` and follow [docs/deployment-render.md](docs/deployment-render.md).
 The PyDivert Layer 4 guard remains a local Windows component because it requires
-WinDivert and Administrator privileges. Render Free storage is ephemeral, so SQLite
-and runtime logs may reset after a restart or redeploy.
+WinDivert and Administrator privileges. MongoDB Atlas provides the persistent data
+store; never commit its connection string or the dashboard admin token.

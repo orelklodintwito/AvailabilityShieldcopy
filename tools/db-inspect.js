@@ -1,28 +1,33 @@
-﻿const { getDb, getDbPath } = require("../src/db/database");
+require("dotenv").config({ path: process.env.DOTENV_CONFIG_PATH || ".env" });
 
-const db = getDb();
+const {
+  getDb,
+  getDbMode,
+  getDbName,
+  findRecentDocuments
+} = require("../src/db/database");
 
-function count(table) {
-  return db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count;
+async function main() {
+  // Open the configured MongoDB connection (or the explicit development
+  // memory adapter when MONGODB_URI is not configured).
+  await getDb();
+  const [requests, events, snapshots] = await Promise.all([
+    findRecentDocuments("request_logs", 10),
+    findRecentDocuments("security_events", 10),
+    findRecentDocuments("metric_snapshots", 10)
+  ]);
+
+  console.log(JSON.stringify({
+    database: { mode: getDbMode(), name: getDbName() },
+    requestLogs: requests.length,
+    securityEvents: events.length,
+    metricSnapshots: snapshots.length,
+    recentRequests: requests,
+    recentSecurityEvents: events
+  }, null, 2));
 }
 
-const summary = {
-  dbPath: getDbPath(),
-  requestLogs: count("request_logs"),
-  securityEvents: count("security_events"),
-  metricSnapshots: count("metric_snapshots"),
-  recentRequests: db.prepare(`
-    SELECT id, timestamp, method, endpoint, decision, severity, status_code, duration_ms, queue_wait_ms
-    FROM request_logs
-    ORDER BY id DESC
-    LIMIT 10
-  `).all(),
-  recentSecurityEvents: db.prepare(`
-    SELECT id, timestamp, endpoint, decision, severity, reason
-    FROM security_events
-    ORDER BY id DESC
-    LIMIT 10
-  `).all()
-};
-
-console.log(JSON.stringify(summary, null, 2));
+main().catch((error) => {
+  console.error(`Database inspection failed: ${error.message}`);
+  process.exit(1);
+});

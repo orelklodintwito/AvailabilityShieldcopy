@@ -6,6 +6,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const axios = require("axios");
+const crypto = require("crypto");
 
 const { loadPolicy } = require("./policies/policy-loader");
 const { requestContextMiddleware } = require("./middleware/request-context.middleware");
@@ -20,6 +21,14 @@ const { writeMetricSnapshot, getRecentMetricSnapshots } = require("../logs/metri
 const { getQueueSnapshot, resetQueue } = require("./queue/request-queue");
 const { getMetrics: getLayer4Metrics, getEvents: getLayer4Events, getConnections: getLayer4Connections, getBlocked: getLayer4Blocked } = require("../layer4/layer4-service");
 const simulations = require("./simulations/simulation-manager");
+const {
+  initializeTarget,
+  getTargetConfig,
+  setTarget,
+  checkTarget,
+  isInternalTarget
+} = require("./targets/target-manager");
+const { getDbMode } = require("../db/database");
 
 const app = express();
 
@@ -45,12 +54,12 @@ const HEALTH_TIMEOUT_MS = Number(
 );
 const PROTECTED_APP_AUTH_TOKEN = process.env.PROTECTED_APP_AUTH_TOKEN || "";
 
-function protectedAppRequestConfig(config = {}) {
+function protectedAppRequestConfig(config = {}, target = "") {
   return {
     ...config,
     headers: {
       ...(config.headers || {}),
-      ...(PROTECTED_APP_AUTH_TOKEN
+      ...(PROTECTED_APP_AUTH_TOKEN && isInternalTarget(target)
         ? { "x-availabilityshield-internal-token": PROTECTED_APP_AUTH_TOKEN }
         : {})
     }
@@ -59,6 +68,7 @@ function protectedAppRequestConfig(config = {}) {
 
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173" }));
 app.use(express.json({ limit: "32kb" }));
+app.use(express.urlencoded({ extended: true, limit: "32kb" }));
 app.use(morgan("dev"));
 
 function clampLimit(value, fallback, maximum) {
@@ -83,6 +93,34 @@ async function getProtectedAppStatus() {
   const target = policy.protectedTarget.replace(/\/$/, "");
   const checkedAt = new Date().toISOString();
 
+  if (!isInternalTarget()) {
+    try {
+      const response = await axios.get(target, {
+        timeout: HEALTH_TIMEOUT_MS,
+        maxRedirects: 3,
+        validateStatus: () => true
+      });
+      return {
+        status: response.status >= 500 ? "degraded" : "healthy",
+        reachable: true,
+        externalTarget: true,
+        service: new URL(target).hostname,
+        target,
+        httpStatus: response.status,
+        checkedAt
+      };
+    } catch (error) {
+      return {
+        status: "unavailable",
+        reachable: false,
+        externalTarget: true,
+        target,
+        error: error.code === "ECONNABORTED" ? "Target health check timed out" : "Target could not be reached",
+        checkedAt
+      };
+    }
+  }
+
   try {
     const [healthResponse, loadResponse] = await Promise.all([
       axios.get(`${target}/health`, {
@@ -90,7 +128,7 @@ async function getProtectedAppStatus() {
       }),
       axios.get(`${target}/__app/load`, {
         timeout: HEALTH_TIMEOUT_MS,
-        ...protectedAppRequestConfig()
+        ...protectedAppRequestConfig({}, target)
       })
     ]);
 
@@ -199,10 +237,21 @@ app.get("/__shield/protected-app/load", async (req, res) => {
   const policy = loadPolicy();
   const target = policy.protectedTarget.replace(/\/$/, "");
 
+  if (!isInternalTarget()) {
+    return res.json({
+      load: {
+        available: false,
+        externalTarget: true,
+        message: "External sites do not expose AvailabilityShield internal load metrics"
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+
   try {
     const response = await axios.get(`${target}/__app/load`, {
       timeout: HEALTH_TIMEOUT_MS,
-      ...protectedAppRequestConfig()
+      ...protectedAppRequestConfig({}, target)
     });
 
     res.json({
@@ -241,6 +290,37 @@ app.get("/__shield/policy", (req, res) => {
   res.json(loadPolicy());
 });
 
+function hasAdminAccess(req) {
+  const expected = process.env.SHIELD_ADMIN_TOKEN || "";
+  if (!expected) return process.env.NODE_ENV !== "production";
+  const supplied = req.get("x-availabilityshield-admin-token") || req.body?.adminToken || "";
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(supplied);
+  return expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
+function requireAdmin(req, res, next) {
+  if (hasAdminAccess(req)) return next();
+  return res.status(401).json({ error: "ADMIN_TOKEN_REQUIRED", message: "A valid dashboard admin token is required" });
+}
+
+app.get("/__shield/target", (req, res) => {
+  res.json({ ...getTargetConfig(), database: getDbMode(), timestamp: new Date().toISOString() });
+});
+
+app.get("/__shield/target/check", async (req, res) => {
+  res.json(await checkTarget());
+});
+
+app.put("/__shield/target", requireAdmin, async (req, res) => {
+  try {
+    const config = await setTarget(req.body?.url || req.body?.target);
+    res.json({ ...config, message: "Target site updated", timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(400).json({ error: error.code || "TARGET_UPDATE_FAILED", message: error.message, timestamp: new Date().toISOString() });
+  }
+});
+
 app.get("/__shield/queue", (req, res) => {
   res.json({
     queue: getQueueSnapshot(),
@@ -248,7 +328,7 @@ app.get("/__shield/queue", (req, res) => {
   });
 });
 
-app.get("/__shield/metrics", (req, res) => {
+app.get("/__shield/metrics", async (req, res) => {
   const snapshot = {
     metrics: getMetricsSnapshot(),
     windows: getWindowSnapshot(),
@@ -256,36 +336,38 @@ app.get("/__shield/metrics", (req, res) => {
     timestamp: new Date().toISOString()
   };
 
-  writeMetricSnapshot(snapshot);
+  await writeMetricSnapshot(snapshot).catch((error) => {
+    console.error(`[AvailabilityShield] metric snapshot persistence failed: ${error.message}`);
+  });
   res.json(snapshot);
 });
 
-app.get("/__shield/requests", (req, res) => {
+app.get("/__shield/requests", async (req, res) => {
   const limit = readLimit(req.query.limit, 50, 200);
   if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
-    logs: getRecentRequestLogs(limit),
+    logs: await getRecentRequestLogs(limit),
     timestamp: new Date().toISOString()
   });
 });
 
-app.get("/__shield/events", (req, res) => {
+app.get("/__shield/events", async (req, res) => {
   const limit = readLimit(req.query.limit, 50, 200);
   if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
-    events: getRecentSecurityEvents(limit),
+    events: await getRecentSecurityEvents(limit),
     timestamp: new Date().toISOString()
   });
 });
 
-app.get("/__shield/metric-snapshots", (req, res) => {
+app.get("/__shield/metric-snapshots", async (req, res) => {
   const limit = readLimit(req.query.limit, 20, 200);
   if (limit === null) return res.status(400).json({ error: "INVALID_QUERY_LIMIT", message: "limit must be an integer between 1 and 200" });
 
   res.json({
-    snapshots: getRecentMetricSnapshots(limit),
+    snapshots: await getRecentMetricSnapshots(limit),
     timestamp: new Date().toISOString()
   });
 });
@@ -346,9 +428,21 @@ app.use((error, req, res, next) => {
   });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  const policy = loadPolicy();
+async function start() {
+  await initializeTarget();
+  return app.listen(PORT, "0.0.0.0", () => {
+    const policy = loadPolicy();
+    console.log(`AvailabilityShield Gateway running on port ${PORT}`);
+    console.log(`Protected target: ${policy.protectedTarget}`);
+    console.log(`Database mode: ${getDbMode()}${getDbMode() === "memory" ? " (set MONGODB_URI for persistence)" : ""}`);
+  });
+}
 
-  console.log(`AvailabilityShield Gateway running on port ${PORT}`);
-  console.log(`Protected target: ${policy.protectedTarget}`);
-});
+if (require.main === module) {
+  start().catch((error) => {
+    console.error(`[AvailabilityShield] Gateway startup failed: ${error.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { app, start };

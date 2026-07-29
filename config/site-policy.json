@@ -12,6 +12,11 @@
     "defaultDelayMs": 300,
     "queueDelayMs": 0
   },
+  "defaultEndpoint": {
+    "type": "basic",
+    "priority": "medium",
+    "rateLimitPerMinute": 120
+  },
   "endpoints": {
     "/health": {
       "type": "basic",

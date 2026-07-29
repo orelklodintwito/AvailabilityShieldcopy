@@ -16,10 +16,12 @@ services:
         generateValue: true
       - key: TRUST_PROXY
         value: "true"
-      - key: AVAILABILITYSHIELD_DB_PATH
-        value: /tmp/availabilityshield.db
-      - key: AVAILABILITYSHIELD_LOG_DIR
-        value: /tmp/availabilityshield-logs
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: availabilityshield
+      - key: SHIELD_ADMIN_TOKEN
+        sync: false
       - key: FRONTEND_ORIGIN
         sync: false
 

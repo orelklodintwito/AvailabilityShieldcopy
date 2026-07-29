@@ -46,7 +46,9 @@ async function mitigationMiddleware(req, res, next) {
   );
 
   if (context.decision !== "allow" || context.severity !== "normal") {
-    writeSecurityEvent(context);
+    await writeSecurityEvent(context).catch((error) => {
+      console.error(`[AvailabilityShield] security event persistence failed: ${error.message}`);
+    });
   }
 
   return applyDecision(req, res, next);

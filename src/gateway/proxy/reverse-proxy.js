@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { loadPolicy } = require("../policies/policy-loader");
+const { isInternalTarget } = require("../targets/target-manager");
 
 function removeHopByHopHeaders(headers) {
   const cleanHeaders = { ...headers };
@@ -8,6 +9,8 @@ function removeHopByHopHeaders(headers) {
   delete cleanHeaders.connection;
   delete cleanHeaders["content-length"];
   delete cleanHeaders["accept-encoding"];
+  delete cleanHeaders["transfer-encoding"];
+  delete cleanHeaders["content-encoding"];
 
   return cleanHeaders;
 }
@@ -16,8 +19,8 @@ function shouldForwardBody(method) {
   return !["GET", "HEAD"].includes(method.toUpperCase());
 }
 
-function internalHeaders() {
-  return process.env.PROTECTED_APP_AUTH_TOKEN
+function internalHeaders(target) {
+  return process.env.PROTECTED_APP_AUTH_TOKEN && isInternalTarget(target)
     ? { "x-availabilityshield-internal-token": process.env.PROTECTED_APP_AUTH_TOKEN }
     : {};
 }
@@ -44,16 +47,21 @@ function createReverseProxy() {
         url: targetUrl,
         headers: {
           ...removeHopByHopHeaders(req.headers),
-          ...internalHeaders(),
+          ...internalHeaders(policy.protectedTarget),
           "x-forwarded-for": context.ip,
           "x-availabilityshield-request-id": context.requestId,
           "x-availabilityshield-decision": context.decision,
           "x-availabilityshield-severity": context.severity
         },
         data: shouldForwardBody(req.method) ? req.body : undefined,
+        responseType: "arraybuffer",
         timeout: 15000,
         validateStatus: () => true
       });
+
+      for (const [name, value] of Object.entries(removeHopByHopHeaders(proxyResponse.headers || {}))) {
+        if (value !== undefined) res.setHeader(name, value);
+      }
 
       res.setHeader("x-availabilityshield-decision", context.decision);
       res.setHeader("x-availabilityshield-severity", context.severity);

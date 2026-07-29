@@ -10,6 +10,7 @@ import Layer4Page from "./pages/Layer4Page.jsx";
 import PolicyPage from "./pages/PolicyPage.jsx";
 import SimulatorPage from "./pages/SimulatorPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import TargetPage from "./pages/TargetPage.jsx";
 
 const pageBySection = {
   Dashboard: OverviewPage,
@@ -21,6 +22,7 @@ const pageBySection = {
   Policies: PolicyPage,
   Reports: ReportsPage,
   Simulator: SimulatorPage,
+  Settings: TargetPage,
   "System Health": SystemHealth
 };
 
