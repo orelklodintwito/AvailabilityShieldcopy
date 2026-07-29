@@ -34,6 +34,7 @@ export default function App() {
 
   const viewModel = {
     ...data,
+    data,
     lastUpdated,
     metrics,
     queue,
