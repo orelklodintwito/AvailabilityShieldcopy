@@ -56,6 +56,12 @@ Reports load without `localhost` requests or CORS errors. In Settings, enter a
 public test site, click **Check target**, then send a request through the Gateway
 path and verify the target response and `x-availabilityshield-*` headers.
 
+To test a lecturer-supplied site, save its public URL in **Settings** and then
+open the same path through the Gateway host (for example,
+`https://<api-host>/products` rather than the target host directly). The target
+does not need to run AvailabilityShield. Check **Traffic Monitor** and
+**Reports** for the resulting request and decision.
+
 ## Local Layer 4 demo
 
 On Windows, install `layer4/requirements.txt`, open Administrator PowerShell and
