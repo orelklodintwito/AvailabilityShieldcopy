@@ -24,8 +24,9 @@ services:
       - key: FRONTEND_ORIGIN
         sync: false
 
-  - type: static_site
+  - type: web
     name: availabilityshield-dashboard
+    runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
