@@ -1,29 +1,36 @@
 # Render deployment (free Layer 7 demo)
 
-This deployment publishes the React dashboard, the Node Gateway and the protected
-web application on Render. The Windows PyDivert Layer 4 guard remains a local
-Windows component because WinDivert requires Windows and Administrator privileges.
+This deployment publishes three cloud services on Render: a public React
+dashboard, a public Layer 7 Gateway, and a separately deployed Protected App.
+The Protected App accepts application traffic only when the Gateway supplies the
+shared internal token. The Windows PyDivert Layer 4 guard remains local because
+WinDivert requires Windows and Administrator privileges.
 
 ## Deploy from the Blueprint
 
 1. Open Render and choose **New -> Blueprint**.
 2. Connect `orelklodintwito/AvailabilityShieldcopy` and select the `main` branch.
 3. Apply `render.yaml`.
-4. In the API service, set `FRONTEND_ORIGIN` to the final dashboard URL, for example:
+4. In the Gateway service, set `FRONTEND_ORIGIN` to the final dashboard URL, for example:
    `https://availabilityshield-dashboard.onrender.com`.
-5. In the dashboard service, set `VITE_API_BASE_URL` to the API URL, for example:
+5. Confirm the generated `PROTECTED_APP_AUTH_TOKEN` is present on the Gateway and
+   is automatically copied to the Protected App by the Blueprint.
+6. In the dashboard service, set `VITE_API_BASE_URL` to the Gateway URL, for example:
    `https://availabilityshield-api.onrender.com`.
-6. Redeploy the dashboard after saving the API URL.
+7. Redeploy the Gateway and dashboard after saving the values.
 
-The API health check is `/__shield/health`. Render supplies the public `PORT`; the
-Gateway listens on `0.0.0.0` and the Protected App remains bound to `127.0.0.1`.
+The Gateway health check is `/__shield/health`. Render supplies the public `PORT`;
+both cloud Node services listen on `0.0.0.0`. The Protected App's application
+routes reject direct requests without the Gateway token.
 
 ## Free-tier limitations
 
 Render Free services can sleep after inactivity and their local filesystem is
-ephemeral. The demo therefore uses `/tmp` for SQLite and Layer 4 log snapshots;
-runtime data can reset after a restart, redeploy or cold start. Persistent SQLite
-requires a paid persistent disk or a database migration.
+ephemeral. The demo therefore uses `/tmp` for SQLite and runtime logs; data can
+reset after a restart, redeploy or cold start. Persistent SQLite requires a paid
+persistent disk or a database migration. Render Free cannot create a private
+service, so the Protected App is a free web service with Gateway-token protection;
+a truly non-public Protected App requires a paid private service.
 
 Production-only reset and simulation endpoints are disabled by `NODE_ENV=production`.
 Traffic simulations remain local-only.

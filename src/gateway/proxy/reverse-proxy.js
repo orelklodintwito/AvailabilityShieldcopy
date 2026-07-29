@@ -16,6 +16,12 @@ function shouldForwardBody(method) {
   return !["GET", "HEAD"].includes(method.toUpperCase());
 }
 
+function internalHeaders() {
+  return process.env.PROTECTED_APP_AUTH_TOKEN
+    ? { "x-availabilityshield-internal-token": process.env.PROTECTED_APP_AUTH_TOKEN }
+    : {};
+}
+
 function buildTargetUrl(targetBaseUrl, originalUrl) {
   return `${targetBaseUrl.replace(/\/$/, "")}${originalUrl}`;
 }
@@ -38,6 +44,7 @@ function createReverseProxy() {
         url: targetUrl,
         headers: {
           ...removeHopByHopHeaders(req.headers),
+          ...internalHeaders(),
           "x-forwarded-for": context.ip,
           "x-availabilityshield-request-id": context.requestId,
           "x-availabilityshield-decision": context.decision,

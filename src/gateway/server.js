@@ -43,6 +43,19 @@ const PORT = Number(process.env.PORT) || Number(process.env.GATEWAY_PORT) || 400
 const HEALTH_TIMEOUT_MS = Number(
   process.env.PROTECTED_APP_HEALTH_TIMEOUT_MS || 1500
 );
+const PROTECTED_APP_AUTH_TOKEN = process.env.PROTECTED_APP_AUTH_TOKEN || "";
+
+function protectedAppRequestConfig(config = {}) {
+  return {
+    ...config,
+    headers: {
+      ...(config.headers || {}),
+      ...(PROTECTED_APP_AUTH_TOKEN
+        ? { "x-availabilityshield-internal-token": PROTECTED_APP_AUTH_TOKEN }
+        : {})
+    }
+  };
+}
 
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173" }));
 app.use(express.json({ limit: "32kb" }));
@@ -76,7 +89,8 @@ async function getProtectedAppStatus() {
         timeout: HEALTH_TIMEOUT_MS
       }),
       axios.get(`${target}/__app/load`, {
-        timeout: HEALTH_TIMEOUT_MS
+        timeout: HEALTH_TIMEOUT_MS,
+        ...protectedAppRequestConfig()
       })
     ]);
 
@@ -187,7 +201,8 @@ app.get("/__shield/protected-app/load", async (req, res) => {
 
   try {
     const response = await axios.get(`${target}/__app/load`, {
-      timeout: HEALTH_TIMEOUT_MS
+      timeout: HEALTH_TIMEOUT_MS,
+      ...protectedAppRequestConfig()
     });
 
     res.json({

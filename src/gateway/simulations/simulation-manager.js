@@ -8,6 +8,9 @@ const SCENARIOS = {
   "basic-preservation": { paths: ["/api/export", "/api/basic"], requests: 36, concurrency: 6 }
 };
 
+const DEFAULT_GATEWAY_TARGET = "http://127.0.0.1:4000";
+const DEFAULT_PROTECTED_TARGET = "http://127.0.0.1:3000";
+
 let current = null;
 let lastResult = null;
 
@@ -134,7 +137,9 @@ function start(input = {}) {
     mode,
     status: "running",
     startedAt: new Date().toISOString(),
-    target: mode === "without-shield" ? "http://127.0.0.1:3000" : "http://127.0.0.1:4000",
+    target: mode === "without-shield"
+      ? (process.env.SIMULATION_DIRECT_TARGET || DEFAULT_PROTECTED_TARGET)
+      : (process.env.SIMULATION_GATEWAY_TARGET || DEFAULT_GATEWAY_TARGET),
     paths: preset.paths,
     total: clamp(input.requests, preset.requests, 1, 200),
     concurrency: clamp(input.concurrency, preset.concurrency, 1, 10),

@@ -4,17 +4,16 @@ services:
     runtime: node
     plan: free
     buildCommand: npm ci
-    startCommand: npm run start:cloud
+    startCommand: npm run start:gateway
     healthCheckPath: /__shield/health
+    region: oregon
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PROTECTED_APP_HOST
-        value: 127.0.0.1
-      - key: PROTECTED_APP_PORT
-        value: 3000
       - key: PROTECTED_TARGET
-        value: http://127.0.0.1:3000
+        value: https://availabilityshield-protected-app.onrender.com
+      - key: PROTECTED_APP_AUTH_TOKEN
+        generateValue: true
       - key: TRUST_PROXY
         value: "true"
       - key: AVAILABILITYSHIELD_DB_PATH
@@ -23,6 +22,25 @@ services:
         value: /tmp/availabilityshield-logs
       - key: FRONTEND_ORIGIN
         sync: false
+
+  - type: web
+    name: availabilityshield-protected-app
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run start:app
+    healthCheckPath: /health
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PROTECTED_APP_HOST
+        value: 0.0.0.0
+      - key: PROTECTED_APP_AUTH_TOKEN
+        fromService:
+          type: web
+          name: availabilityshield-api
+          envVarKey: PROTECTED_APP_AUTH_TOKEN
 
   - type: web
     name: availabilityshield-dashboard
