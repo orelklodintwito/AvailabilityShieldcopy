@@ -5,7 +5,13 @@ const POLICY_PATH = path.resolve(__dirname, "../../../config/site-policy.json");
 
 function loadPolicy() {
   const rawPolicy = fs.readFileSync(POLICY_PATH, "utf8");
-  return JSON.parse(rawPolicy);
+  const policy = JSON.parse(rawPolicy);
+
+  if (process.env.PROTECTED_TARGET) {
+    policy.protectedTarget = process.env.PROTECTED_TARGET;
+  }
+
+  return policy;
 }
 
 function getEndpointPolicy(endpointPath) {

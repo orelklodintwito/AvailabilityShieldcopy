@@ -4,7 +4,7 @@ const {
   runConcurrentScenario
 } = require("../simulator/utils/scenario-runner");
 
-const DIRECT_TARGET = "http://localhost:3000";
+const DIRECT_TARGET = "http://127.0.0.1:3000";
 const SHIELD_TARGET = "http://localhost:4000";
 
 function count(results, predicate) {

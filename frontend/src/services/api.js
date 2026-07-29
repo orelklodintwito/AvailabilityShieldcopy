@@ -1,4 +1,8 @@
-const BASE_URL = (import.meta.env.VITE_GATEWAY_URL || "").replace(/\/$/, "");
+const BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_GATEWAY_URL ||
+  ""
+).replace(/\/$/, "");
 const DEFAULT_TIMEOUT_MS = 8000;
 
 async function request(path, options = {}) {

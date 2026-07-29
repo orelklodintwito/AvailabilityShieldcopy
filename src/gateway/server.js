@@ -23,6 +23,8 @@ const simulations = require("./simulations/simulation-manager");
 
 const app = express();
 
+app.set("trust proxy", process.env.TRUST_PROXY === "true");
+
 // Keep backwards-compatible top-level fields while exposing one stable API envelope.
 app.use((req, res, next) => {
   const json = res.json.bind(res);
@@ -37,7 +39,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const PORT = process.env.GATEWAY_PORT || 4000;
+const PORT = Number(process.env.PORT) || Number(process.env.GATEWAY_PORT) || 4000;
 const HEALTH_TIMEOUT_MS = Number(
   process.env.PROTECTED_APP_HEALTH_TIMEOUT_MS || 1500
 );
@@ -329,9 +331,9 @@ app.use((error, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   const policy = loadPolicy();
 
-  console.log(`AvailabilityShield Gateway running on http://localhost:${PORT}`);
+  console.log(`AvailabilityShield Gateway running on port ${PORT}`);
   console.log(`Protected target: ${policy.protectedTarget}`);
 });

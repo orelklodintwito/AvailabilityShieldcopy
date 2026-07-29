@@ -30,3 +30,11 @@ See [docs/architecture.md](docs/architecture.md), [docs/api.md](docs/api.md), [d
 ## Completion checklist
 
 The repository now includes clean environment handling, one-command startup, a gateway API contract, Vite proxying, page-level React structure, real metrics/queues/events, Layer 4 routes, a safe browser simulator, JSON/CSV/PDF reports, loading/error/disconnected states, ESLint/Vitest coverage, edge-case validation, and the documented demo flow.
+
+## Render free Layer 7 deployment
+
+Render can host the React dashboard, Gateway and Protected App for a free demo.
+Apply `render.yaml` and follow [docs/deployment-render.md](docs/deployment-render.md).
+The PyDivert Layer 4 guard remains a local Windows component because it requires
+WinDivert and Administrator privileges. Render Free storage is ephemeral, so SQLite
+and runtime logs may reset after a restart or redeploy.

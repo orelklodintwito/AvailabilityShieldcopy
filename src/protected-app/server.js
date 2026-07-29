@@ -17,7 +17,8 @@ const {
 
 const app = express();
 
-const PORT = process.env.PROTECTED_APP_PORT || 3000;
+const PORT = Number(process.env.PROTECTED_APP_PORT) || 3000;
+const HOST = process.env.PROTECTED_APP_HOST || "127.0.0.1";
 
 app.use(cors());
 app.use(express.json());
@@ -51,6 +52,6 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Protected Web App running on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Protected Web App running on ${HOST}:${PORT}`);
 });

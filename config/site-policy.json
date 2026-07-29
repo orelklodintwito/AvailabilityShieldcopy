@@ -1,5 +1,5 @@
 {
-  "protectedTarget": "http://localhost:3000",
+  "protectedTarget": "http://127.0.0.1:3000",
   "windowMs": 60000,
   "thresholds": {
     "warningRatio": 0.7,
