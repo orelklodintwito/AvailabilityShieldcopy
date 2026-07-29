@@ -10,7 +10,7 @@ const policyDefaults = JSON.parse(fs.readFileSync(POLICY_PATH, "utf8"));
 const DEFAULT_TARGET = (process.env.PROTECTED_TARGET || policyDefaults.protectedTarget || "").replace(/\/$/, "");
 
 let activeTarget = DEFAULT_TARGET;
-let activeInternal = true;
+let activeInternal = activeTarget === DEFAULT_TARGET;
 let updatedAt = null;
 
 function isPrivateIpv4(address) {

@@ -58,11 +58,17 @@ URL schemes to avoid turning the Gateway into an SSRF relay.
 | Queue | Heavy-request queue depth and wait accounting |
 | Layer 4 | Local PyDivert health, SYN metrics and blocked sources |
 | Reports | JSON/CSV/PDF exports |
+| Simulator | Bounded demo traffic; cloud mode is internal-target-only and token-protected |
 | Settings | Active protected target and target reachability check |
 | System Health | Gateway, database and target health |
 
-The development-only simulator creates small allow-listed bursts against the
-local Gateway. It is disabled in production and cannot execute shell commands.
+The simulator creates small allow-listed bursts. Locally it targets the local
+Gateway. In the Render deployment, open **Simulator**, read the safety notice
+shown above the controls, enter the configured `SHIELD_ADMIN_TOKEN`, choose a
+scenario and click **Run demo**. Cloud mode is limited to the included
+Protected App (maximum 24 requests and four workers) and is rejected when an
+external target is active. It cannot execute shell commands or generate
+traffic against a lecturer's external site.
 
 ## Submission smoke test
 

@@ -3,6 +3,7 @@ import {
   Activity,
   Bell,
   FileText,
+  FlaskConical,
   Gauge,
   HeartPulse,
   ListChecks,
@@ -43,6 +44,10 @@ const navigationItems = [
   {
     label: "Reports",
     icon: FileText
+  },
+  {
+    label: "Simulator",
+    icon: FlaskConical
   },
   {
     label: "Settings",

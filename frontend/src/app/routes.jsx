@@ -5,6 +5,7 @@ export const sectionRoutes = {
   Policies: "policies",
   Queue: "queue",
   Reports: "reports",
+  Simulator: "simulator",
   Settings: "settings",
   "System Health": "health",
   Dashboard: "dashboard"

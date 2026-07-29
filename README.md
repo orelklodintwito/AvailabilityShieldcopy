@@ -58,6 +58,9 @@ The sidebar provides the following views:
 - **Layer 4** – PyDivert health, SYN counters, blocked sources and events. In
   the Render deployment this view reports that the Windows agent is local.
 - **Reports** – export the visible metrics, events and request data.
+- **Simulator** – run a bounded demo scenario. On Render it requires the
+  dashboard admin token and is restricted to the included Protected App; it
+  cannot generate traffic against an external target.
 - **Settings** – select the public site that the Gateway protects.
 - **System Health** – Gateway, database and protected-target health checks.
 
@@ -103,7 +106,12 @@ With the protected app and gateway running: `npm run build`, `npm run lint`, `np
 
 `validate:all` runs frontend structure/unit checks, ESLint, production build, Layer 4 policy checks, and the live backend scenarios. The live backend portion requires the app and gateway; Layer 4 packet enforcement additionally requires PyDivert and Administrator privileges.
 
-The simulator is local-only, uses an allow-listed scenario set, caps request count and concurrency, and never executes a client-provided shell command.
+The simulator uses an allow-listed scenario set, caps request count and
+concurrency, and never executes a client-provided shell command. In local
+development it targets the local Gateway. The Render **Simulator** tab is
+enabled only for the included Protected App, requires `SHIELD_ADMIN_TOKEN`,
+and is capped at 24 requests with four workers. It is rejected whenever an
+external target is active and must not be used to load-test a third-party site.
 
 See [docs/user-guide.md](docs/user-guide.md), [docs/architecture.md](docs/architecture.md),
 [docs/api.md](docs/api.md), [docs/testing.md](docs/testing.md), and

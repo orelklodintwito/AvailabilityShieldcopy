@@ -131,6 +131,9 @@ function start(input = {}) {
   }
 
   const mode = input.mode === "without-shield" ? "without-shield" : "with-shield";
+  const maxRequests = process.env.NODE_ENV === "production" ? 24 : 200;
+  const maxConcurrency = process.env.NODE_ENV === "production" ? 4 : 10;
+
   current = {
     id: crypto.randomUUID(),
     scenario,
@@ -141,8 +144,8 @@ function start(input = {}) {
       ? (process.env.SIMULATION_DIRECT_TARGET || DEFAULT_PROTECTED_TARGET)
       : (process.env.SIMULATION_GATEWAY_TARGET || DEFAULT_GATEWAY_TARGET),
     paths: preset.paths,
-    total: clamp(input.requests, preset.requests, 1, 200),
-    concurrency: clamp(input.concurrency, preset.concurrency, 1, 10),
+    total: clamp(input.requests, preset.requests, 1, maxRequests),
+    concurrency: clamp(input.concurrency, preset.concurrency, 1, maxConcurrency),
     nextIndex: 0,
     completed: 0,
     progress: 0,

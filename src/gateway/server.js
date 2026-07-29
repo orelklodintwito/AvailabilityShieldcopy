@@ -274,6 +274,41 @@ function developmentOnly(req, res, next) {
   return next();
 }
 
+function simulationAccess(req, res, next) {
+  if (process.env.NODE_ENV !== "production") return next();
+
+  if (process.env.ENABLE_CLOUD_DEMO_SIMULATOR !== "true") {
+    return res.status(404).json({
+      error: "SIMULATOR_DISABLED",
+      message: "The cloud demo simulator is disabled for this deployment"
+    });
+  }
+
+  if (!isInternalTarget()) {
+    return res.status(409).json({
+      error: "SIMULATOR_INTERNAL_TARGET_ONLY",
+      message: "The cloud demo simulator can run only against the included Protected App"
+    });
+  }
+
+  if (!hasAdminAccess(req)) {
+    return res.status(401).json({
+      error: "ADMIN_TOKEN_REQUIRED",
+      message: "A valid dashboard admin token is required to run the cloud demo simulator"
+    });
+  }
+
+  // Never allow a cloud request to turn this demo control into a public load tool.
+  req.body = {
+    ...(req.body || {}),
+    mode: "with-shield",
+    requests: Math.min(Number(req.body?.requests) || 12, 24),
+    concurrency: Math.min(Number(req.body?.concurrency) || 2, 4)
+  };
+
+  return next();
+}
+
 app.post("/__shield/reset", developmentOnly, (req, res) => {
   resetMetrics();
   resetWindows();
@@ -393,7 +428,7 @@ app.get("/__shield/layer4/events", (req, res) => {
   res.json({ events: getLayer4Events(clampLimit(req.query.limit, 50, 200)), timestamp: new Date().toISOString() });
 });
 
-app.post("/__shield/simulations", developmentOnly, (req, res) => {
+app.post("/__shield/simulations", simulationAccess, (req, res) => {
   try {
     res.status(202).json({ simulation: simulations.start(req.body), timestamp: new Date().toISOString() });
   } catch (error) {
@@ -401,15 +436,15 @@ app.post("/__shield/simulations", developmentOnly, (req, res) => {
   }
 });
 
-app.get("/__shield/simulations/status", developmentOnly, (req, res) => {
+app.get("/__shield/simulations/status", simulationAccess, (req, res) => {
   res.json({ simulation: simulations.getStatus(), timestamp: new Date().toISOString() });
 });
 
-app.get("/__shield/simulations/results", developmentOnly, (req, res) => {
+app.get("/__shield/simulations/results", simulationAccess, (req, res) => {
   res.json({ result: simulations.getResults(), timestamp: new Date().toISOString() });
 });
 
-app.post("/__shield/simulations/cancel", developmentOnly, (req, res) => {
+app.post("/__shield/simulations/cancel", simulationAccess, (req, res) => {
   res.json({ simulation: simulations.cancel(), timestamp: new Date().toISOString() });
 });
 

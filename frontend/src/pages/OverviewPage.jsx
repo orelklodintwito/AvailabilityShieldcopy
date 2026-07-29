@@ -3,11 +3,10 @@ import StatCard from "../components/StatCard.jsx";
 import TrafficChart from "../components/TrafficChart.jsx";
 import TrafficByLayer from "../components/TrafficByLayer.jsx";
 import TopAttackers from "../components/TopAttackers.jsx";
-import AttackSimulator from "../components/AttackSimulator.jsx";
 
 const number = new Intl.NumberFormat("en-US");
 
-export default function OverviewPage({ metrics, data, queue, layer4, online, onSimulationComplete }) {
+export default function OverviewPage({ metrics, data, queue, layer4, online }) {
   const decisions = metrics.decisions || {};
   const mitigated = ["limit", "delay", "queue", "drop"].reduce((sum, key) => sum + (decisions[key] || 0), 0);
   const stats = [
@@ -22,6 +21,5 @@ export default function OverviewPage({ metrics, data, queue, layer4, online, onS
   return <>
     <section className="stats-grid">{stats.map(([icon, label, value, hint, tone]) => <StatCard key={label} icon={icon} label={label} value={value} hint={hint} tone={tone} />)}</section>
     <section className="overview-dashboard"><div className="overview-traffic"><TrafficChart snapshots={data.snapshots || []} /></div><TrafficByLayer logs={data.logs || []} metrics={{ ...metrics, layer4 }} /><TopAttackers logs={data.logs || []} events={data.events || []} /></section>
-    <AttackSimulator onComplete={onSimulationComplete} />
   </>;
 }

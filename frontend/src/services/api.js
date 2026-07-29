@@ -77,13 +77,21 @@ export const shieldApi = {
   layer4Blocked: (options) => request("/__shield/layer4/blocked", options),
   layer4Events: (limit = 50, options) => request(`/__shield/layer4/events?limit=${limit}`, options),
 
-  startSimulation: (payload) => request("/__shield/simulations", {
+  startSimulation: (payload, adminToken = "") => request("/__shield/simulations", {
     method: "POST",
+    headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined,
     body: JSON.stringify(payload)
   }),
-  simulationStatus: () => request("/__shield/simulations/status"),
-  simulationResults: () => request("/__shield/simulations/results"),
-  cancelSimulation: () => request("/__shield/simulations/cancel", { method: "POST" }),
+  simulationStatus: (adminToken = "") => request("/__shield/simulations/status", {
+    headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined
+  }),
+  simulationResults: (adminToken = "") => request("/__shield/simulations/results", {
+    headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined
+  }),
+  cancelSimulation: (adminToken = "") => request("/__shield/simulations/cancel", {
+    method: "POST",
+    headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined
+  }),
 
   reset: () =>
     request("/__shield/reset", {

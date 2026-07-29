@@ -18,6 +18,8 @@ WinDivert requires Windows and Administrator privileges.
    demo this is commonly `0.0.0.0/0`, protected by the database username/password).
 5. In the Gateway service, set `FRONTEND_ORIGIN` to the final dashboard URL, for example:
    `https://availabilityshield-dashboard.onrender.com`.
+   The Blueprint also enables the bounded cloud demo simulator and points it at
+   the included Protected App. It remains protected by `SHIELD_ADMIN_TOKEN`.
 6. Confirm the generated `PROTECTED_APP_AUTH_TOKEN` is present on the Gateway and
    is automatically copied to the Protected App by the Blueprint.
 7. In the dashboard service, set `VITE_API_BASE_URL` to the Gateway URL, for example:
@@ -37,8 +39,11 @@ is a free web service with Gateway-token protection; the Gateway can also proxy 
 any public target entered in Settings. The Windows PyDivert Layer 4 guard is not
 part of the Render deployment.
 
-Production-only reset and simulation endpoints are disabled by `NODE_ENV=production`.
-Traffic simulations remain local-only.
+The reset endpoint remains disabled by `NODE_ENV=production`. The Render
+**Simulator** tab is a controlled exception: it is a token-protected,
+internal-target-only demo with a maximum of 24 requests and four workers. It is
+rejected as soon as an external target is selected. Traffic simulations must
+not be used against third-party sites.
 
 ## Cloud smoke test
 

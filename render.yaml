@@ -22,6 +22,10 @@ services:
         value: availabilityshield
       - key: SHIELD_ADMIN_TOKEN
         sync: false
+      - key: ENABLE_CLOUD_DEMO_SIMULATOR
+        value: "true"
+      - key: SIMULATION_GATEWAY_TARGET
+        value: https://availabilityshield-api.onrender.com
       - key: FRONTEND_ORIGIN
         sync: false
 
