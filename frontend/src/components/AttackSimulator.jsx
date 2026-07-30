@@ -126,6 +126,7 @@ export default function AttackSimulator({ onComplete }) {
         {isProductionBuild
           ? "Cloud demo is limited to the included Protected App, requires the admin token, and cannot run against an external site. Leaving this tab or refreshing does not cancel an active run."
           : "Local demo traffic is bounded and is intended only for testing the local Gateway. Leaving this tab or refreshing does not cancel an active run."
+        }
       </p>
 
       <div className="simulator-controls">

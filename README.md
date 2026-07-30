@@ -112,6 +112,9 @@ development it targets the local Gateway. The Render **Simulator** tab is
 enabled only for the included Protected App, requires `SHIELD_ADMIN_TOKEN`,
 and is capped at 24 requests with four workers. It is rejected whenever an
 external target is active and must not be used to load-test a third-party site.
+The run is owned by the Gateway, so changing dashboard sections or refreshing
+the browser does not cancel it; return to **Simulator** to reconnect to its
+status. A Render service restart ends an in-memory run.
 
 See [docs/user-guide.md](docs/user-guide.md), [docs/architecture.md](docs/architecture.md),
 [docs/api.md](docs/api.md), [docs/testing.md](docs/testing.md), and
