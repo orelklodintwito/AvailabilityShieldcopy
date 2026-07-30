@@ -96,7 +96,6 @@ export default function AttackSimulator({ onComplete }) {
 
     setRunning(true);
     setResult("");
-
     setProgress(0);
     saveSessionToken(adminToken.trim());
     try {
@@ -161,7 +160,7 @@ export default function AttackSimulator({ onComplete }) {
 
         <button type="button" className="primary-action" onClick={runScenario} disabled={running}>
           {running ? <LoaderCircle className="spin" size={17} /> : <Play size={17} />}
-          {running ? "Running…" : "Run demo"}
+          {running ? "Running..." : "Run demo"}
         </button>
       </div>
 
