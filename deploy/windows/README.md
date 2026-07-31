@@ -26,7 +26,15 @@
 5. In a separate elevated PowerShell window, start Layer 4:
 
    ```powershell
+   $env:LAYER4_GATEWAY_URL = "https://availabilityshield-api.onrender.com"
+   $env:LAYER4_AGENT_ID = "orel-windows"
+   $env:LAYER4_AGENT_TOKEN = "the-same-secret-configured-on-Render"
    .\deploy\windows\start-layer4.ps1 -Mode enforce
    ```
+
+   The Gateway receives the agent heartbeat, metrics and events over HTTPS and
+   the cloud dashboard shows the latest snapshot. Without these three
+   `LAYER4_*` values, the packet guard still runs locally but cloud reporting
+   remains disabled. Never commit the token.
 
 Put IIS or another HTTPS reverse proxy in front of the frontend/gateway. Keep ports 3000 and 4000 private; expose only ports 80/443.

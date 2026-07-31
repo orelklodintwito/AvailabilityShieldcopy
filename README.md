@@ -9,6 +9,14 @@ AvailabilityShield is a Layer 7 reverse-proxy protection system with an optional
 
 The free Render deployment runs the Layer 7 gateway, protected app and React dashboard. The PyDivert Layer 4 guard remains a local Windows component. Configure a MongoDB Atlas free cluster in Render with `MONGODB_URI` before using the deployment as a persistent demo.
 
+To show the live Windows Layer 4 status in the cloud dashboard, configure
+`LAYER4_AGENT_TOKEN` on the Render Gateway, then set the same secret together
+with `LAYER4_GATEWAY_URL=https://availabilityshield-api.onrender.com` on the
+elevated Windows PowerShell process that runs `npm run dev:layer4`. The agent
+sends heartbeat, metrics and events to the Gateway over HTTPS and MongoDB keeps
+the latest snapshot. This synchronizes telemetry; PyDivert still protects only
+traffic crossing that Windows computer, not all traffic sent to Render.
+
 ## Run locally
 
 Requirements: Node.js 18+, npm, and (for Layer 4) Python 3, PyDivert and
@@ -56,7 +64,8 @@ The sidebar provides the following views:
 - **Policies** – active Layer 7 thresholds and endpoint classifications.
 - **Queue** – bounded heavy-request queue and wait-time telemetry.
 - **Layer 4** – PyDivert health, SYN counters, blocked sources and events. In
-  the Render deployment this view reports that the Windows agent is local.
+  the Render deployment this view can show the fresh Windows agent snapshot
+  when cloud reporting is configured.
 - **Reports** – export the visible metrics, events and request data.
 - **Simulator** – run a bounded demo scenario. On Render it requires the
   dashboard admin token and is restricted to the included Protected App; it

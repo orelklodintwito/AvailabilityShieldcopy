@@ -20,6 +20,11 @@ const { getRecentSecurityEvents } = require("../logs/security-event.service");
 const { writeMetricSnapshot, getRecentMetricSnapshots } = require("../logs/metric-log.service");
 const { getQueueSnapshot, resetQueue } = require("./queue/request-queue");
 const { getMetrics: getLayer4Metrics, getEvents: getLayer4Events, getConnections: getLayer4Connections, getBlocked: getLayer4Blocked } = require("../layer4/layer4-service");
+const {
+  saveAgentHeartbeat,
+  saveAgentMetrics,
+  saveAgentEvents
+} = require("../layer4/layer4-cloud.service");
 const simulations = require("./simulations/simulation-manager");
 const {
   initializeTarget,
@@ -345,6 +350,33 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ error: "ADMIN_TOKEN_REQUIRED", message: "A valid dashboard admin token is required" });
 }
 
+function requireLayer4Agent(req, res, next) {
+  const expected = process.env.LAYER4_AGENT_TOKEN || "";
+  const authorization = req.get("authorization") || "";
+  const supplied = /^Bearer\s+(.+)$/i.exec(authorization)?.[1]?.trim() || "";
+
+  if (!expected) {
+    return res.status(503).json({
+      error: "LAYER4_AGENT_TOKEN_NOT_CONFIGURED",
+      message: "The Gateway has not been configured with LAYER4_AGENT_TOKEN"
+    });
+  }
+
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(supplied);
+  const valid = expectedBuffer.length === suppliedBuffer.length
+    && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+
+  if (!valid) {
+    return res.status(401).json({
+      error: "INVALID_LAYER4_AGENT_TOKEN",
+      message: "A valid Layer 4 agent bearer token is required"
+    });
+  }
+
+  return next();
+}
+
 app.get("/__shield/target", (req, res) => {
   res.json({ ...getTargetConfig(), database: getDbMode(), timestamp: new Date().toISOString() });
 });
@@ -413,25 +445,52 @@ app.get("/__shield/metric-snapshots", async (req, res) => {
   });
 });
 
-app.get("/__shield/layer4/health", (req, res) => {
-  const metrics = getLayer4Metrics();
+app.post("/__shield/layer4/heartbeat", requireLayer4Agent, async (req, res) => {
+  try {
+    const agent = await saveAgentHeartbeat(req.body || {});
+    return res.status(202).json({ accepted: true, agentId: agent.agentId, timestamp: new Date().toISOString() });
+  } catch (error) {
+    return res.status(400).json({ error: error.code || "INVALID_LAYER4_HEARTBEAT", message: error.message });
+  }
+});
+
+app.post("/__shield/layer4/metrics", requireLayer4Agent, async (req, res) => {
+  try {
+    const agent = await saveAgentMetrics(req.body || {});
+    return res.status(202).json({ accepted: true, agentId: agent.agentId, timestamp: new Date().toISOString() });
+  } catch (error) {
+    return res.status(400).json({ error: error.code || "INVALID_LAYER4_METRICS", message: error.message });
+  }
+});
+
+app.post("/__shield/layer4/events", requireLayer4Agent, async (req, res) => {
+  try {
+    const result = await saveAgentEvents(req.body || {});
+    return res.status(202).json({ accepted: true, ...result, timestamp: new Date().toISOString() });
+  } catch (error) {
+    return res.status(400).json({ error: error.code || "INVALID_LAYER4_EVENTS", message: error.message });
+  }
+});
+
+app.get("/__shield/layer4/health", async (req, res) => {
+  const metrics = await getLayer4Metrics();
   res.json({ status: metrics.running ? "healthy" : "unavailable", ...metrics, timestamp: new Date().toISOString() });
 });
 
-app.get("/__shield/layer4/metrics", (req, res) => {
-  res.json({ metrics: getLayer4Metrics(), timestamp: new Date().toISOString() });
+app.get("/__shield/layer4/metrics", async (req, res) => {
+  res.json({ metrics: await getLayer4Metrics(), timestamp: new Date().toISOString() });
 });
 
-app.get("/__shield/layer4/connections", (req, res) => {
-  res.json({ connections: getLayer4Connections(), timestamp: new Date().toISOString() });
+app.get("/__shield/layer4/connections", async (req, res) => {
+  res.json({ connections: await getLayer4Connections(), timestamp: new Date().toISOString() });
 });
 
-app.get("/__shield/layer4/blocked", (req, res) => {
-  res.json({ blocked: getLayer4Blocked(), timestamp: new Date().toISOString() });
+app.get("/__shield/layer4/blocked", async (req, res) => {
+  res.json({ blocked: await getLayer4Blocked(), timestamp: new Date().toISOString() });
 });
 
-app.get("/__shield/layer4/events", (req, res) => {
-  res.json({ events: getLayer4Events(clampLimit(req.query.limit, 50, 200)), timestamp: new Date().toISOString() });
+app.get("/__shield/layer4/events", async (req, res) => {
+  res.json({ events: await getLayer4Events(clampLimit(req.query.limit, 50, 200)), timestamp: new Date().toISOString() });
 });
 
 app.post("/__shield/simulations", simulationAccess, (req, res) => {

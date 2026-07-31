@@ -19,6 +19,15 @@ async function main() {
   const queue = await gateway.get("/__shield/queue");
   checks.push(["Queue exposes wait metrics", queue.status === 200 && "averageWaitMs" in queue.data.queue && "maximumWaitMs" in queue.data.queue]);
 
+  const unauthenticatedLayer4 = await gateway.post("/__shield/layer4/heartbeat", {
+    agentId: "validation-agent",
+    running: true,
+    mode: "monitor",
+    stats: {},
+    timestamp: new Date().toISOString()
+  });
+  checks.push(["Layer 4 agent endpoint requires bearer token", [401, 503].includes(unauthenticatedLayer4.status)]);
+
   for (const [name, passed] of checks) console.log(`${passed ? "PASS" : "FAIL"} - ${name}`);
   if (checks.some(([, passed]) => !passed)) process.exit(1);
 }

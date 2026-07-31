@@ -3,8 +3,12 @@ import json
 import os
 import signal
 import sys
+import threading
 import time
+import urllib.error
+import urllib.request
 from collections import defaultdict, deque
+from datetime import datetime, timezone
 from ipaddress import ip_address
 from pathlib import Path
 
@@ -20,9 +24,12 @@ POLICY_PATH = PROJECT_ROOT / "layer4" / "l4-policy.json"
 LOG_DIR = Path(os.environ.get("AVAILABILITYSHIELD_LOG_DIR", PROJECT_ROOT / "logs" / "layer4"))
 EVENT_LOG_PATH = LOG_DIR / "layer4-events.jsonl"
 METRICS_PATH = LOG_DIR / "layer4-metrics.json"
+DEFAULT_SYNC_INTERVAL_SECONDS = 5.0
 
 running = True
 syn_windows = defaultdict(deque)
+pending_events = deque(maxlen=500)
+pending_events_lock = threading.Lock()
 
 stats = {
     "startedAt": None,
@@ -45,7 +52,102 @@ def now_ms():
 
 
 def now_iso():
-    return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+class CloudSync:
+    def __init__(self, gateway_url, token, agent_id, mode, interval_seconds):
+        self.gateway_url = gateway_url.rstrip("/")
+        self.token = token
+        self.agent_id = agent_id
+        self.mode = mode
+        self.interval_seconds = max(float(interval_seconds), 1.0)
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.last_error = None
+
+    @property
+    def enabled(self):
+        return bool(self.gateway_url and self.token)
+
+    def start(self):
+        if not self.enabled:
+            print("Cloud Layer 4 sync disabled: set LAYER4_GATEWAY_URL and LAYER4_AGENT_TOKEN to enable.")
+            return
+
+        self.thread = threading.Thread(target=self._loop, name="layer4-cloud-sync", daemon=True)
+        self.thread.start()
+        print(f"Cloud Layer 4 sync enabled: {self.gateway_url} (every {self.interval_seconds:g}s)")
+
+    def stop(self):
+        if not self.enabled:
+            return
+
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout=max(self.interval_seconds + 1, 3))
+        self.send_snapshot(False)
+        self.send_pending_events()
+
+    def _loop(self):
+        while not self.stop_event.is_set():
+            self.send_snapshot(True)
+            self.send_pending_events()
+            self.stop_event.wait(self.interval_seconds)
+
+    def _post(self, endpoint, payload):
+        url = f"{self.gateway_url}/__shield/layer4/{endpoint}"
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json",
+                "User-Agent": "AvailabilityShield-Layer4-Agent/1.0"
+            },
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=4) as response:
+                if response.status < 200 or response.status >= 300:
+                    raise RuntimeError(f"HTTP {response.status}")
+            self.last_error = None
+            return True
+        except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as error:
+            message = str(error)
+            if message != self.last_error:
+                print(f"Cloud Layer 4 sync warning: {message}")
+                self.last_error = message
+            return False
+
+    def _snapshot_stats(self):
+        # JSON round-tripping gives the sender an isolated copy while packet
+        # handling continues to update the live counters.
+        return json.loads(json.dumps(stats, ensure_ascii=False))
+
+    def send_snapshot(self, is_running):
+        payload = {
+            "agentId": self.agent_id,
+            "running": bool(is_running),
+            "mode": self.mode,
+            "stats": self._snapshot_stats(),
+            "timestamp": now_iso()
+        }
+        self._post("heartbeat", payload)
+        self._post("metrics", payload)
+
+    def send_pending_events(self):
+        with pending_events_lock:
+            if not pending_events:
+                return
+            events = list(pending_events)
+            pending_events.clear()
+
+        if not self._post("events", {"agentId": self.agent_id, "events": events}):
+            with pending_events_lock:
+                for event in reversed(events):
+                    pending_events.appendleft(event)
 
 
 def load_policy():
@@ -91,6 +193,8 @@ def write_metrics(policy):
 def log_event(event):
     stats["lastEvent"] = event
     append_jsonl(EVENT_LOG_PATH, event)
+    with pending_events_lock:
+        pending_events.append(event)
 
 
 def get_tcp_flag(tcp, name):
@@ -180,6 +284,13 @@ def handle_signal(sig, frame):
 def main():
     parser = argparse.ArgumentParser(description="AvailabilityShield Layer 4 TCP/SYN guard")
     parser.add_argument("--mode", choices=["monitor", "enforce"], default="monitor")
+    parser.add_argument("--gateway-url", default=os.environ.get("LAYER4_GATEWAY_URL", ""))
+    parser.add_argument("--agent-id", default=os.environ.get("LAYER4_AGENT_ID", "orel-windows"))
+    parser.add_argument(
+        "--sync-interval",
+        type=float,
+        default=float(os.environ.get("LAYER4_SYNC_INTERVAL_SECONDS", DEFAULT_SYNC_INTERVAL_SECONDS))
+    )
     args = parser.parse_args()
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -204,6 +315,14 @@ def main():
     print("Press CTRL+C to stop.\n")
 
     write_metrics(policy)
+    cloud_sync = CloudSync(
+        args.gateway_url,
+        os.environ.get("LAYER4_AGENT_TOKEN", ""),
+        args.agent_id,
+        args.mode,
+        args.sync_interval
+    )
+    cloud_sync.start()
 
     try:
         with pydivert.WinDivert(filter_expression) as divert:
@@ -316,6 +435,7 @@ def main():
         print("Make sure PowerShell is running as Administrator and PyDivert/WinDivert can load.")
         sys.exit(1)
     finally:
+        cloud_sync.stop()
         write_metrics(policy)
         print("Layer 4 guard stopped.")
         print(json.dumps(stats, indent=2))

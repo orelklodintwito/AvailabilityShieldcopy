@@ -24,7 +24,9 @@ WinDivert requires Windows and Administrator privileges.
    is automatically copied to the Protected App by the Blueprint.
 7. In the dashboard service, set `VITE_API_BASE_URL` to the Gateway URL, for example:
    `https://availabilityshield-api.onrender.com`.
-8. Redeploy the Gateway and dashboard after saving the values.
+8. In the Gateway service, add `LAYER4_AGENT_TOKEN` as a secret. Do not commit
+   this value. The Windows agent must use the exact same token.
+9. Redeploy the Gateway and dashboard after saving the values.
 
 The Gateway health check is `/__shield/health`. Render supplies the public `PORT`;
 both cloud Node services listen on `0.0.0.0`. The Protected App's application
@@ -67,8 +69,40 @@ open the same path through the Gateway host (for example,
 does not need to run AvailabilityShield. Check **Traffic Monitor** and
 **Reports** for the resulting request and decision.
 
+## Cloud reporting from the Windows Layer 4 agent
+
+The Layer 4 packet interception still runs only on the Windows computer. The
+agent can, however, report its heartbeat, metrics and security events to the
+cloud Gateway over HTTPS. The Gateway authenticates `Authorization: Bearer
+<LAYER4_AGENT_TOKEN>` and stores the latest agent record and events in
+MongoDB. The dashboard then reads the cloud snapshot, so changing tabs or
+refreshing the dashboard does not stop reporting.
+
+In an elevated PowerShell window on the Windows machine, set the same secret
+that was configured in Render and start the agent:
+
+```powershell
+$env:LAYER4_GATEWAY_URL = "https://availabilityshield-api.onrender.com"
+$env:LAYER4_AGENT_ID = "orel-windows"
+$env:LAYER4_AGENT_TOKEN = "paste-the-same-secret-used-in-Render"
+$env:LAYER4_SYNC_INTERVAL_SECONDS = "5"
+npm run dev:layer4
+```
+
+The agent sends `POST /__shield/layer4/heartbeat` and
+`POST /__shield/layer4/metrics` every five seconds and sends queued events to
+`POST /__shield/layer4/events`. The **Layer 4** page shows the agent ID, last
+seen time and whether the snapshot is fresh. If the Windows process stops, the
+cloud snapshot becomes stale after `LAYER4_AGENT_STALE_MS` (15 seconds by
+default).
+
+This is telemetry synchronization, not remote packet interception: the agent
+protects and observes traffic that crosses the Windows machine only. It does
+not protect every user or every TCP connection reaching Render.
+
 ## Local Layer 4 demo
 
 On Windows, install `layer4/requirements.txt`, open Administrator PowerShell and
-run `npm run dev:layer4` in monitor mode. This protects and reports traffic on the
-Windows machine; it does not protect the Render service.
+run `npm run dev:layer4` in monitor mode. Without the cloud variables above it
+protects and reports traffic on the Windows machine only; it does not protect
+the Render service.

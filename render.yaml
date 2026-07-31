@@ -28,6 +28,10 @@ services:
         value: https://availabilityshield-api.onrender.com
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: LAYER4_AGENT_TOKEN
+        sync: false
+      - key: LAYER4_AGENT_STALE_MS
+        value: "15000"
 
   - type: web
     name: availabilityshield-protected-app

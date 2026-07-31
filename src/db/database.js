@@ -31,7 +31,11 @@ async function getMongoDb() {
         db.collection("request_logs").createIndex({ createdAt: -1 }),
         db.collection("security_events").createIndex({ createdAt: -1 }),
         db.collection("metric_snapshots").createIndex({ createdAt: -1 }),
-        db.collection("target_configs").createIndex({ key: 1 }, { unique: true })
+        db.collection("target_configs").createIndex({ key: 1 }, { unique: true }),
+        db.collection("layer4_agents").createIndex({ agentId: 1 }, { unique: true }),
+        db.collection("layer4_agents").createIndex({ updatedAt: -1 }),
+        db.collection("layer4_agent_events").createIndex({ createdAt: -1 }),
+        db.collection("layer4_agent_events").createIndex({ agentId: 1, timestamp: -1 })
       ]);
       return db;
     });
@@ -75,8 +79,8 @@ async function insertDocument(collectionName, document) {
 
 function sortDocuments(documents) {
   return documents.sort((a, b) => {
-    const aTime = new Date(a.createdAt || a.timestamp || 0).getTime();
-    const bTime = new Date(b.createdAt || b.timestamp || 0).getTime();
+    const aTime = new Date(a.updatedAt || a.createdAt || a.timestamp || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt || b.timestamp || 0).getTime();
     return bTime - aTime;
   });
 }

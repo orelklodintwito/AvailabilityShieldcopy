@@ -8,6 +8,10 @@ const LOG_DIR = process.env.AVAILABILITYSHIELD_LOG_DIR
 const METRICS_PATH = path.join(LOG_DIR, "layer4-metrics.json");
 const EVENTS_PATH = path.join(LOG_DIR, "layer4-events.jsonl");
 const POLICY_PATH = path.join(PROJECT_ROOT, "layer4", "l4-policy.json");
+const {
+  getLatestAgentSnapshot,
+  getRecentAgentEvents
+} = require("./layer4-cloud.service");
 
 function readJson(filePath, fallback) {
   try {
@@ -21,7 +25,7 @@ function getPolicy() {
   return readJson(POLICY_PATH, {});
 }
 
-function getMetrics() {
+function getLocalMetrics() {
   const payload = readJson(METRICS_PATH, null);
 
   if (!payload) {
@@ -47,7 +51,7 @@ function getMetrics() {
   };
 }
 
-function getEvents(limit = 50) {
+function getLocalEvents(limit = 50) {
   try {
     return fs
       .readFileSync(EVENTS_PATH, "utf8")
@@ -68,8 +72,20 @@ function getEvents(limit = 50) {
   }
 }
 
-function getConnections() {
-  const stats = getMetrics().stats;
+async function getMetrics() {
+  const cloud = await getLatestAgentSnapshot();
+  if (cloud) return cloud;
+  return getLocalMetrics();
+}
+
+async function getEvents(limit = 50) {
+  const cloudEvents = await getRecentAgentEvents(limit);
+  if (cloudEvents.length) return cloudEvents;
+  return getLocalEvents(limit);
+}
+
+async function getConnections() {
+  const stats = (await getMetrics()).stats;
 
   return {
     active: Number(stats.activeConnections || 0),
@@ -79,8 +95,8 @@ function getConnections() {
   };
 }
 
-function getBlocked() {
-  const stats = getMetrics().stats;
+async function getBlocked() {
+  const stats = (await getMetrics()).stats;
 
   return Object.entries(stats.bySource || {})
     .filter(([, value]) => Number(value.dropped || 0) > 0)
