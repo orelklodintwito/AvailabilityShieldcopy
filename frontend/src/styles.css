@@ -349,6 +349,30 @@ main {
   font-size: 12px;
 }
 
+.global-simulator-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -4px 0 16px;
+  padding: 10px 13px;
+  border: 1px solid rgba(75, 145, 236, 0.65);
+  border-radius: 10px;
+  color: #cfe3ff;
+  background: linear-gradient(90deg, rgba(24, 70, 132, 0.75), rgba(13, 34, 62, 0.92));
+  font-size: 11px;
+}
+
+.global-simulator-banner strong {
+  color: #72b1ff;
+}
+
+.global-simulator-banner .secondary-button {
+  height: 30px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -1635,6 +1659,12 @@ code {
   font-size: 9px;
 }
 
+.simulator-result.error {
+  color: #ffb1bb;
+  border-color: #733144;
+  background: rgba(61, 21, 31, 0.96);
+}
+
 .export-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1652,6 +1682,11 @@ code {
 
   .simulator-controls {
     grid-template-columns: 1fr;
+  }
+
+  .global-simulator-banner {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

@@ -68,10 +68,11 @@ shown above the controls, enter the configured `SHIELD_ADMIN_TOKEN`, choose a
 scenario and click **Run demo**. Cloud mode is limited to the included
 Protected App (maximum 24 requests and four workers) and is rejected when an
 external target is active. It cannot execute shell commands or generate
-traffic against a lecturer's external site. The run is owned by the Gateway,
-so changing sections or refreshing the browser does not cancel it; return to
-**Simulator** to reconnect to its status. A service restart ends an in-memory
-run.
+traffic against a lecturer's external site. The run is owned by the Gateway
+and is global to the dashboard. Changing sections, opening another dashboard
+tab or refreshing the browser does not cancel it. All dashboard views keep
+polling live metrics while the run is active, and the global banner or
+**Simulator** page can cancel it. A service restart ends an in-memory run.
 
 ## Submission smoke test
 

@@ -11,6 +11,17 @@ import PolicyPage from "./pages/PolicyPage.jsx";
 import SimulatorPage from "./pages/SimulatorPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import TargetPage from "./pages/TargetPage.jsx";
+import { useSimulationController } from "./hooks/useSimulationController.js";
+
+const ACTIVE_SECTION_KEY = "availabilityshield.activeSection";
+
+function readActiveSection() {
+  try {
+    return window.localStorage.getItem(ACTIVE_SECTION_KEY) || "Dashboard";
+  } catch {
+    return "Dashboard";
+  }
+}
 
 const pageBySection = {
   Dashboard: OverviewPage,
@@ -27,8 +38,17 @@ const pageBySection = {
 };
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState("Dashboard");
-  const { data, loading, error, lastUpdated, loadDashboard, reset } = useShieldDashboard();
+  const [activeSection, setActiveSectionState] = useState(readActiveSection);
+  const setActiveSection = (section) => {
+    setActiveSectionState(section);
+    try {
+      window.localStorage.setItem(ACTIVE_SECTION_KEY, section);
+    } catch {
+      // Storage may be unavailable in privacy-restricted browsers.
+    }
+  };
+  const simulationController = useSimulationController();
+  const { data, loading, error, lastUpdated, loadDashboard, reset } = useShieldDashboard(simulationController.simulationActive ? 1000 : 5000);
   const metrics = data.metrics?.metrics || {};
   const queue = data.metrics?.queue || {};
   const layer4 = data.layer4?.metrics || {};
@@ -45,14 +65,32 @@ export default function App() {
     loading,
     error,
     refresh: () => loadDashboard(),
-    onSimulationComplete: () => loadDashboard(true)
+    simulation: simulationController.simulation,
+    adminToken: simulationController.adminToken,
+    simulationError: simulationController.simulationError,
+    onAdminTokenChange: simulationController.setAdminToken,
+    onStartSimulation: simulationController.startSimulation,
+    onCancelSimulation: simulationController.cancelSimulation,
+    simulationActive: simulationController.simulationActive
   };
 
   const Page = pageBySection[activeSection] || OverviewPage;
   const pageProps = { ...viewModel, activeSection, setActiveSection };
 
   return (
-    <AppLayout activeSection={activeSection} onSelect={setActiveSection} online={online} lastUpdated={lastUpdated} loading={loading} error={error} onRefresh={() => loadDashboard()} onReset={reset}>
+    <AppLayout
+      activeSection={activeSection}
+      onSelect={setActiveSection}
+      online={online}
+      lastUpdated={lastUpdated}
+      loading={loading}
+      error={error}
+      onRefresh={() => loadDashboard()}
+      onReset={reset}
+      simulation={simulationController.simulation}
+      simulationActive={simulationController.simulationActive}
+      onCancelSimulation={simulationController.cancelSimulation}
+    >
       <Page {...pageProps} />
     </AppLayout>
   );

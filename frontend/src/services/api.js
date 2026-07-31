@@ -82,10 +82,10 @@ export const shieldApi = {
     headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined,
     body: JSON.stringify(payload)
   }),
-  simulationStatus: (adminToken = "") => request("/__shield/simulations/status", {
+  simulationStatus: (adminToken = "", simulationId = "") => request(`/__shield/simulations/status${simulationId ? `?id=${encodeURIComponent(simulationId)}` : ""}`, {
     headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined
   }),
-  simulationResults: (adminToken = "") => request("/__shield/simulations/results", {
+  simulationResults: (adminToken = "", simulationId = "") => request(`/__shield/simulations/results${simulationId ? `?id=${encodeURIComponent(simulationId)}` : ""}`, {
     headers: adminToken ? { "x-availabilityshield-admin-token": adminToken } : undefined
   }),
   cancelSimulation: (adminToken = "") => request("/__shield/simulations/cancel", {

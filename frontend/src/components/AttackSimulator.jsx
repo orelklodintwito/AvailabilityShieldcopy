@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Activity, FlaskConical, LoaderCircle, Play } from "lucide-react";
-import { shieldApi } from "../services/api.js";
+import { useState } from "react";
+import { Activity, FlaskConical, LoaderCircle, Play, Square } from "lucide-react";
+import { isSimulationActive } from "../hooks/useSimulationController.js";
 
 const scenarios = {
   normal: {
@@ -20,94 +20,34 @@ const scenarios = {
   }
 };
 
-const SIMULATOR_TOKEN_KEY = "availabilityshield.simulator.adminToken";
-
-function readSessionToken() {
-  try {
-    return window.sessionStorage.getItem(SIMULATOR_TOKEN_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function saveSessionToken(token) {
-  try {
-    if (token) window.sessionStorage.setItem(SIMULATOR_TOKEN_KEY, token);
-  } catch {
-    // Session storage may be unavailable in privacy-restricted browsers.
-  }
-}
-
-export default function AttackSimulator({ onComplete }) {
+export default function AttackSimulator({
+  simulation,
+  adminToken,
+  simulationError,
+  onAdminTokenChange,
+  onStart,
+  onCancel
+}) {
   const [scenario, setScenario] = useState("normal");
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState("");
-  const [progress, setProgress] = useState(0);
-  const initialAdminToken = useRef(readSessionToken()).current;
-  const [adminToken, setAdminToken] = useState(initialAdminToken);
+  const [starting, setStarting] = useState(false);
+  const running = isSimulationActive(simulation);
   const isProductionBuild = import.meta.env.PROD;
-
-  useEffect(() => {
-    let active = true;
-
-    // Reconnect to a run that belongs to this browser session after navigation
-    // or a refresh. The run itself lives in the Gateway process, not in React.
-    shieldApi.simulationStatus(initialAdminToken)
-      .then((response) => {
-        if (!active) return;
-        const simulation = response.simulation || {};
-        if (["running", "cancelling"].includes(simulation.status)) {
-          setProgress(simulation.progress || 0);
-          setRunning(true);
-        } else if (["completed", "cancelled", "failed"].includes(simulation.status)) {
-          setProgress(simulation.progress || 100);
-          setResult(`${simulation.status}: ${simulation.completed || 0}/${simulation.total || 0} requests`);
-        }
-      })
-      .catch(() => {
-        // An idle or tokenless production session has no status to restore.
-      });
-
-    return () => { active = false; };
-  }, [initialAdminToken]);
-
-  useEffect(() => {
-    if (!running) return undefined;
-    const timer = window.setInterval(async () => {
-      try {
-        const response = await shieldApi.simulationStatus(adminToken.trim());
-        const simulation = response.simulation || {};
-        setProgress(simulation.progress || 0);
-        if (["completed", "cancelled", "failed"].includes(simulation.status)) {
-          setRunning(false);
-          setResult(`${simulation.status}: ${simulation.completed || 0}/${simulation.total || 0} requests`);
-          onComplete?.();
-        }
-      } catch (error) {
-        setRunning(false);
-        setResult(error.message);
-      }
-    }, 500);
-    return () => window.clearInterval(timer);
-  }, [adminToken, running, onComplete]);
+  const terminal = ["completed", "cancelled", "failed"].includes(simulation?.status);
 
   const runScenario = async () => {
-    if (running) return;
-
-    setRunning(true);
-    setResult("");
-    setProgress(0);
-    saveSessionToken(adminToken.trim());
+    if (running || starting) return;
+    setStarting(true);
     try {
-      await shieldApi.startSimulation({
+      await onStart({
         scenario: scenario === "httpFloodDemo" ? "http-flood" : scenario === "heavyAbuseDemo" ? "heavy" : "normal",
         requests: scenarios[scenario].requests,
         concurrency: 4,
         mode: "with-shield"
-      }, adminToken.trim());
-    } catch (error) {
-      setRunning(false);
-      setResult(error.message);
+      }, adminToken);
+    } catch {
+      // The controller exposes the readable error in the simulator panel.
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -123,15 +63,15 @@ export default function AttackSimulator({ onComplete }) {
 
       <p className="simulator-notice">
         {isProductionBuild
-          ? "Cloud demo is limited to the included Protected App, requires the admin token, and cannot run against an external site. Leaving this tab or refreshing does not cancel an active run."
-          : "Local demo traffic is bounded and is intended only for testing the local Gateway. Leaving this tab or refreshing does not cancel an active run."
+          ? "Cloud demo is limited to the included Protected App, requires the admin token, and cannot run against an external site. The simulator is global: all dashboard views update until it completes or is cancelled."
+          : "Local demo traffic is bounded and is intended only for testing the local Gateway. The simulator is global across all dashboard views until it completes or is cancelled."
         }
       </p>
 
       <div className="simulator-controls">
         <label>
           <span>Scenario</span>
-          <select value={scenario} onChange={(event) => setScenario(event.target.value)} disabled={running}>
+          <select value={scenario} onChange={(event) => setScenario(event.target.value)} disabled={running || starting}>
             {Object.entries(scenarios).map(([key, item]) => (
               <option value={key} key={key}>{item.label}</option>
             ))}
@@ -143,10 +83,10 @@ export default function AttackSimulator({ onComplete }) {
           <input
             type="password"
             value={adminToken}
-            onChange={(event) => setAdminToken(event.target.value)}
+            onChange={(event) => onAdminTokenChange(event.target.value)}
             placeholder={isProductionBuild ? "Enter SHIELD_ADMIN_TOKEN" : "Optional"}
             autoComplete="off"
-            disabled={running}
+            disabled={running || starting}
           />
         </label>
 
@@ -158,14 +98,21 @@ export default function AttackSimulator({ onComplete }) {
           </div>
         </div>
 
-        <button type="button" className="primary-action" onClick={runScenario} disabled={running}>
-          {running ? <LoaderCircle className="spin" size={17} /> : <Play size={17} />}
-          {running ? "Running..." : "Run demo"}
-        </button>
+        {running ? (
+          <button type="button" className="secondary-button" onClick={onCancel} disabled={simulation.status === "cancelling"}>
+            <Square size={16} /> {simulation.status === "cancelling" ? "Cancelling..." : "Cancel simulator"}
+          </button>
+        ) : (
+          <button type="button" className="primary-action" onClick={runScenario} disabled={starting}>
+            {starting ? <LoaderCircle className="spin" size={17} /> : <Play size={17} />}
+            {starting ? "Starting..." : "Run demo"}
+          </button>
+        )}
       </div>
 
-      {result && <div className="simulator-result">{result}</div>}
-      {running && <div className="simulator-progress" role="status">Progress: {progress}%</div>}
+      {simulationError && <div className="simulator-result error" role="alert">{simulationError}</div>}
+      {terminal && simulation.status !== "idle" && <div className="simulator-result">{simulation.status}: {simulation.completed || 0}/{simulation.total || 0} requests</div>}
+      {running && <div className="simulator-progress" role="status">Global simulator active · Progress: {simulation.progress || 0}% · {simulation.completed || 0}/{simulation.total || 0} requests</div>}
     </section>
   );
 }

@@ -23,6 +23,24 @@ function snapshot() {
   };
 }
 
+function getStatus(simulationId = "") {
+  if (!simulationId) return snapshot();
+  if (current?.id === simulationId) return snapshot();
+  if (lastResult?.id === simulationId) {
+    return { ...lastResult, progress: 100, completed: lastResult.total };
+  }
+  return { status: "unknown", id: simulationId, progress: 0, completed: 0, total: 0 };
+}
+
+function getResults(simulationId = "") {
+  if (!simulationId || lastResult?.id === simulationId) return lastResult;
+  return null;
+}
+
+function hasSimulation(simulationId = "") {
+  return Boolean(simulationId && (current?.id === simulationId || lastResult?.id === simulationId));
+}
+
 function clamp(value, fallback, min, max) {
   const parsed = Number(value);
   return Number.isFinite(parsed)
@@ -171,6 +189,8 @@ module.exports = {
   start,
   cancel,
   getStatus: snapshot,
-  getResults: () => lastResult,
+  getStatusById: getStatus,
+  getResults,
+  hasSimulation,
   SCENARIOS
 };

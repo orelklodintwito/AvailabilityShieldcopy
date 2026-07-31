@@ -277,6 +277,12 @@ function developmentOnly(req, res, next) {
 function simulationAccess(req, res, next) {
   if (process.env.NODE_ENV !== "production") return next();
 
+  const simulationId = req.query?.id || req.body?.simulationId || "";
+  const readOnlyStatusRequest = req.method === "GET" && (
+    simulations.hasSimulation(simulationId) || /^[0-9a-f-]{36}$/i.test(simulationId)
+  );
+  if (readOnlyStatusRequest) return next();
+
   if (process.env.ENABLE_CLOUD_DEMO_SIMULATOR !== "true") {
     return res.status(404).json({
       error: "SIMULATOR_DISABLED",
@@ -437,11 +443,11 @@ app.post("/__shield/simulations", simulationAccess, (req, res) => {
 });
 
 app.get("/__shield/simulations/status", simulationAccess, (req, res) => {
-  res.json({ simulation: simulations.getStatus(), timestamp: new Date().toISOString() });
+  res.json({ simulation: simulations.getStatusById(req.query?.id || ""), timestamp: new Date().toISOString() });
 });
 
 app.get("/__shield/simulations/results", simulationAccess, (req, res) => {
-  res.json({ result: simulations.getResults(), timestamp: new Date().toISOString() });
+  res.json({ result: simulations.getResults(req.query?.id || ""), timestamp: new Date().toISOString() });
 });
 
 app.post("/__shield/simulations/cancel", simulationAccess, (req, res) => {
