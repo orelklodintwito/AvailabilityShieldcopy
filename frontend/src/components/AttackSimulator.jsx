@@ -17,6 +17,11 @@ const scenarios = {
     label: "Heavy endpoint demo",
     requests: 12,
     paths: ["/api/search", "/api/report", "/api/export"]
+  },
+  mitigationDemo: {
+    label: "Mitigation demo (fills Alerts/Queue)",
+    requests: 24,
+    paths: ["/api/export"]
   }
 };
 
@@ -39,7 +44,7 @@ export default function AttackSimulator({
     setStarting(true);
     try {
       await onStart({
-        scenario: scenario === "httpFloodDemo" ? "http-flood" : scenario === "heavyAbuseDemo" ? "heavy" : "normal",
+        scenario: scenario === "httpFloodDemo" ? "http-flood" : scenario === "heavyAbuseDemo" ? "heavy" : scenario === "mitigationDemo" ? "mitigation-demo" : "normal",
         requests: scenarios[scenario].requests,
         concurrency: 4,
         mode: "with-shield"

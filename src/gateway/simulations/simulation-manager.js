@@ -5,6 +5,7 @@ const SCENARIOS = {
   normal: { paths: ["/health", "/api/basic"], requests: 12, concurrency: 2 },
   "http-flood": { paths: ["/api/basic", "/api/search"], requests: 60, concurrency: 5 },
   heavy: { paths: ["/api/search", "/api/report", "/api/export"], requests: 30, concurrency: 4 },
+  "mitigation-demo": { paths: ["/api/export"], requests: 24, concurrency: 4 },
   "basic-preservation": { paths: ["/api/export", "/api/basic"], requests: 36, concurrency: 6 }
 };
 

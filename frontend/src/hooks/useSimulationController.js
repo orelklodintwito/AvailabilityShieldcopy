@@ -86,17 +86,27 @@ export function useSimulationController() {
   useEffect(() => {
     mounted.current = true;
     refreshStatus();
-    const timer = window.setInterval(refreshStatus, 750);
     const onStorage = (event) => {
       if (event.key === SIMULATOR_ID_KEY) refreshStatus();
     };
     window.addEventListener("storage", onStorage);
     return () => {
       mounted.current = false;
-      window.clearInterval(timer);
       window.removeEventListener("storage", onStorage);
     };
   }, [refreshStatus]);
+
+  const simulationStatus = simulation.status;
+  const simulationId = simulation.id;
+
+  useEffect(() => {
+    const shouldPoll = Boolean(readSimulationId()) && (
+      ["running", "cancelling", "checking"].includes(simulationStatus)
+    );
+    if (!shouldPoll) return undefined;
+    const timer = window.setInterval(refreshStatus, 750);
+    return () => window.clearInterval(timer);
+  }, [refreshStatus, simulationStatus, simulationId]);
 
   const start = useCallback(async (payload, token) => {
     const nextToken = token.trim();

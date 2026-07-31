@@ -13,7 +13,7 @@ async function main() {
   second.release();
   assert.equal(queue.getQueueSnapshot().activeHeavyForwarded, 0);
 
-  assert.deepEqual(Object.keys(simulations.SCENARIOS).sort(), ["basic-preservation", "heavy", "http-flood", "normal"]);
+  assert.deepEqual(Object.keys(simulations.SCENARIOS).sort(), ["basic-preservation", "heavy", "http-flood", "mitigation-demo", "normal"]);
   console.log("PASS - queue acquire/release and wait accounting");
   console.log("PASS - simulation allow-list");
 }
