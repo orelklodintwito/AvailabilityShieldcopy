@@ -12,6 +12,14 @@ The optional Layer 4 component is a Windows-only PyDivert/WinDivert agent. It
 observes TCP SYN traffic before the local Gateway and can allow or drop bursts.
 It is not executed inside Render because Render runs Linux containers.
 
+For cloud telemetry, set `LAYER4_AGENT_TOKEN` on the Render Gateway and set the
+same value on the Windows agent together with
+`LAYER4_GATEWAY_URL=https://availabilityshield-api.onrender.com`. The agent
+publishes heartbeat, metrics and events over HTTPS every five seconds. The
+Layer 4 dashboard page then shows the Windows agent's latest counters and marks
+them stale if heartbeats stop. This reports the local agent; it does not make
+PyDivert protect every connection reaching Render.
+
 ## Cloud access
 
 - Dashboard: `https://availabilityshield-dashboard.onrender.com/`
@@ -56,7 +64,7 @@ URL schemes to avoid turning the Gateway into an SSRF relay.
 | Mitigation | Allow/delay/queue/drop activity |
 | Policies | Layer 7 limits and endpoint policy |
 | Queue | Heavy-request queue depth and wait accounting |
-| Layer 4 | Local PyDivert health, SYN metrics and blocked sources |
+| Layer 4 | Windows PyDivert health, SYN metrics and blocked sources; optionally synchronized to the cloud |
 | Reports | JSON/CSV/PDF exports |
 | Simulator | Bounded demo traffic; cloud mode is internal-target-only and token-protected |
 | Settings | Active protected target and target reachability check |
