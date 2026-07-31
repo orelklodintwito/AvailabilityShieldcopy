@@ -8,13 +8,14 @@ const number = new Intl.NumberFormat("en-US");
 
 export default function OverviewPage({ metrics, data, queue, layer4, online }) {
   const decisions = metrics.decisions || {};
+  const layer4Status = layer4.running ? "Healthy" : layer4.source === "cloud-agent" && layer4.stale ? "Stale" : "Unavailable";
   const mitigated = ["limit", "delay", "queue", "drop"].reduce((sum, key) => sum + (decisions[key] || 0), 0);
   const stats = [
     [ShieldCheck, "Overall status", online ? "Protected" : "Disconnected", online ? "Gateway is reachable" : "Last successful data is shown", online ? "green" : "red"],
     [Activity, "Requests / minute", number.format(metrics.requestsPerMinute || 0), `${metrics.activeRequests || 0} currently active`, "blue"],
     [Ban, "Mitigated", number.format(mitigated), `${number.format(decisions.drop || 0)} dropped`, "red"],
     [AlertTriangle, "Error rate", `${((metrics.errorRate || 0) * 100).toFixed(1)}%`, `${number.format(metrics.totalErrors || 0)} server errors`, "orange"],
-    [Server, "Layer 4", layer4.running ? "Healthy" : "Unavailable", `${layer4.stats?.totalTcpSynSeen || 0} SYN observed`, layer4.running ? "green" : "orange"],
+    [Server, "Layer 4", layer4Status, `${layer4.stats?.totalTcpSynSeen || 0} SYN observed`, layer4.running ? "green" : "orange"],
     [CheckCircle2, "Queue", number.format(queue.queuedHeavy || 0), `${queue.activeHeavyForwarded || 0} forwarded`, "purple"]
   ];
 

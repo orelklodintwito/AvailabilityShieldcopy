@@ -32,6 +32,8 @@ function getLocalMetrics() {
     return {
       available: false,
       running: false,
+      source: "unavailable",
+      message: "No Layer 4 agent has reported metrics",
       stats: {},
       policy: getPolicy(),
       timestamp: null
@@ -45,6 +47,7 @@ function getLocalMetrics() {
     available: true,
     running: !stale,
     stale,
+    source: "local-file",
     stats: payload.stats || {},
     policy: payload.policy || getPolicy(),
     timestamp: payload.timestamp || modifiedAt.toISOString()
